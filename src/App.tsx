@@ -7,7 +7,6 @@ import { HomeView } from './components/home/HomeView';
 import { ChatView } from './components/chat/ChatView';
 import { AvatarSelectionView } from './components/avatar/AvatarSelectionView';
 import { ScienceLabView } from './components/science/ScienceLabView';
-import { LudoGameView } from './components/games/LudoGameView';
 import { CoinsAndPassView } from './components/coins/CoinsAndPassView';
 import { SettingsView } from './components/settings/SettingsView';
 import { AutomationsView } from './components/automations/AutomationsView';
@@ -86,8 +85,6 @@ const MainLayout: React.FC = () => {
         return <AvatarSelectionView />;
       case 'science':
         return <ScienceLabView />;
-      case 'ludo':
-        return <LudoGameView onBack={() => setActiveTab('home')} />;
       case 'coins':
         return <CoinsAndPassView />;
       case 'settings':

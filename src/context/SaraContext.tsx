@@ -12,6 +12,7 @@ import {
   AutomationItem,
   ActivityItem,
   CoinTransaction,
+  AppPermissions,
 } from '../types';
 
 interface SaraContextType {
@@ -67,11 +68,21 @@ interface SaraContextType {
   claimDailyReward: () => boolean;
   isDailyRewardClaimed: boolean;
   dailyRewardCountdown: string;
+  dailyStreak: number;
+  resetDailyRewardForTest: () => void;
   isPassActive: boolean;
   passRemainingSeconds: number;
   activatePass: (hours?: number) => boolean;
   watchRewardedAd: () => boolean;
   adsWatchedToday: number;
+
+  // Permissions & User Controls
+  permissions: AppPermissions;
+  requestMicrophonePermission: () => Promise<boolean>;
+  requestLocationPermission: () => Promise<boolean>;
+  requestNotificationPermission: () => Promise<boolean>;
+  togglePermission: (key: keyof AppPermissions, value?: boolean) => void;
+  grantAllPermissions: () => Promise<void>;
 
   // System Diagnostics
   cpuPower: number;
@@ -405,7 +416,12 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
   ]);
 
   const [lastClaimDate, setLastClaimDate] = useState<string>(() => {
-    return localStorage.getItem('sara_last_claim_date') || new Date().toDateString();
+    return localStorage.getItem('sara_last_claim_date') || '';
+  });
+
+  const [dailyStreak, setDailyStreak] = useState<number>(() => {
+    const s = localStorage.getItem('sara_daily_streak');
+    return s ? parseInt(s, 10) : 1;
   });
 
   const [passExpiresAt, setPassExpiresAt] = useState<number>(() => {
@@ -425,6 +441,10 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     localStorage.setItem('sara_last_claim_date', lastClaimDate);
   }, [lastClaimDate]);
+
+  useEffect(() => {
+    localStorage.setItem('sara_daily_streak', dailyStreak.toString());
+  }, [dailyStreak]);
 
   useEffect(() => {
     localStorage.setItem('sara_pass_expiry', passExpiresAt.toString());
@@ -464,23 +484,36 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const claimDailyReward = () => {
     if (isDailyRewardClaimed) return false;
-    setCoinBalance((prev) => prev + 10);
-    setLastClaimDate(new Date().toDateString());
+    const streakRewards = [10, 20, 30, 50, 75, 100, 250];
+    const rewardAmount = streakRewards[(dailyStreak - 1) % streakRewards.length] || 10;
+    
+    setCoinBalance((prev) => prev + rewardAmount);
+    const todayStr = new Date().toDateString();
+    setLastClaimDate(todayStr);
+    const nextStreak = dailyStreak >= 7 ? 1 : dailyStreak + 1;
+    setDailyStreak(nextStreak);
+
     const newTx: CoinTransaction = {
       id: `tx_${Date.now()}`,
-      title: 'Daily reward claimed',
-      amount: 10,
+      title: `Daily reward (Day ${dailyStreak} streak)`,
+      amount: rewardAmount,
       type: 'daily_reward',
       timestamp: 'Just now',
     };
     setCoinTransactions((prev) => [newTx, ...prev]);
     addActivityLog({
-      title: 'Daily Reward (+10 Coins)',
+      title: `Daily Reward (+${rewardAmount} Coins)`,
       type: 'reward',
       service: 'Sara Economy',
       status: 'SUCCESS',
     });
+    speakText(`অভিনন্দন বাবু! তোমার ${rewardAmount} কয়েন ডেইলি রিওয়ার্ড সফলভাবে যুক্ত হয়েছে! ❤️`, 'romantic');
     return true;
+  };
+
+  const resetDailyRewardForTest = () => {
+    setLastClaimDate('');
+    localStorage.removeItem('sara_last_claim_date');
   };
 
   const watchRewardedAd = () => {
@@ -706,6 +739,127 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsSpeaking(false);
     setAudioFrequencyData([5, 10, 15, 8, 5]);
     setAssistantState('IDLE');
+  };
+
+  // 12.5 Interactive User Permissions State & Handlers
+  const [permissions, setPermissions] = useState<AppPermissions>(() => {
+    const saved = localStorage.getItem('sara_app_permissions');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return {
+      microphone: 'prompt',
+      location: 'prompt',
+      notifications: typeof Notification !== 'undefined' && Notification.permission === 'granted' ? 'granted' : 'default',
+      wakeWord: true,
+      persistentMemory: true,
+      audioPlayback: true,
+      floatingOverlay: true,
+    };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('sara_app_permissions', JSON.stringify(permissions));
+  }, [permissions]);
+
+  const togglePermission = (key: keyof AppPermissions, value?: boolean) => {
+    setPermissions((prev) => {
+      const updated = { ...prev };
+      if (key === 'microphone' || key === 'location') {
+        updated[key] = (updated[key] === 'granted' ? 'denied' : 'granted') as any;
+      } else if (key === 'notifications') {
+        updated[key] = (updated[key] === 'granted' ? 'denied' : 'granted') as any;
+      } else {
+        updated[key] = typeof value === 'boolean' ? value : (!updated[key] as any);
+      }
+      return updated;
+    });
+  };
+
+  const requestMicrophonePermission = async (): Promise<boolean> => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((t) => t.stop());
+      setPermissions((prev) => ({ ...prev, microphone: 'granted' }));
+      speakText('মাইক্রোফোন পারমিশন পেয়েছি বাবু! ❤️ এখন তুমি যখন খুশি কথা বলতে পারবে।', 'romantic');
+      addActivityLog({
+        title: 'Microphone Permission Granted',
+        type: 'action',
+        service: 'System Security',
+        status: 'SUCCESS',
+      });
+      return true;
+    } catch (err) {
+      setPermissions((prev) => ({ ...prev, microphone: 'denied' }));
+      return false;
+    }
+  };
+
+  const requestLocationPermission = async (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        setPermissions((prev) => ({ ...prev, location: 'denied' }));
+        return resolve(false);
+      }
+      navigator.geolocation.getCurrentPosition(
+        () => {
+          setPermissions((prev) => ({ ...prev, location: 'granted' }));
+          speakText('লোকেশন পারমিশন অন হয়েছে! এখন তোমার এলাকার লাইভ আবহাওয়া দেখাতে পারব।', 'caring');
+          addActivityLog({
+            title: 'Location Permission Granted',
+            type: 'action',
+            service: 'System Security',
+            status: 'SUCCESS',
+          });
+          resolve(true);
+        },
+        () => {
+          setPermissions((prev) => ({ ...prev, location: 'denied' }));
+          resolve(false);
+        }
+      );
+    });
+  };
+
+  const requestNotificationPermission = async (): Promise<boolean> => {
+    if (typeof Notification === 'undefined') return false;
+    try {
+      const res = await Notification.requestPermission();
+      if (res === 'granted') {
+        setPermissions((prev) => ({ ...prev, notifications: 'granted' }));
+        try {
+          new Notification('সারা এআই (SARA AI)', {
+            body: 'নোটিফিকেশন পারমিশন সক্রিয় হয়েছে! আমি তোমাকে সব আপডেট জানাব। ❤️',
+          });
+        } catch (_) {}
+        speakText('নোটিফিকেশন পারমিশন সফল হয়েছে বাবু! ❤️', 'romantic');
+        addActivityLog({
+          title: 'Notification Permission Granted',
+          type: 'action',
+          service: 'System Security',
+          status: 'SUCCESS',
+        });
+        return true;
+      } else {
+        setPermissions((prev) => ({ ...prev, notifications: 'denied' }));
+        return false;
+      }
+    } catch (e) {
+      return false;
+    }
+  };
+
+  const grantAllPermissions = async () => {
+    await requestMicrophonePermission();
+    await requestLocationPermission();
+    await requestNotificationPermission();
+    setPermissions((prev) => ({
+      ...prev,
+      wakeWord: true,
+      persistentMemory: true,
+      audioPlayback: true,
+      floatingOverlay: true,
+    }));
   };
 
   // 13. Send Chat Message (Coordinates Chat, High Thinking, Maps Grounding)
@@ -1020,11 +1174,19 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
         claimDailyReward,
         isDailyRewardClaimed,
         dailyRewardCountdown,
+        dailyStreak,
+        resetDailyRewardForTest,
         isPassActive,
         passRemainingSeconds,
         activatePass,
         watchRewardedAd,
         adsWatchedToday,
+        permissions,
+        requestMicrophonePermission,
+        requestLocationPermission,
+        requestNotificationPermission,
+        togglePermission,
+        grantAllPermissions,
         cpuPower,
         networkConnected,
         systemOperational,

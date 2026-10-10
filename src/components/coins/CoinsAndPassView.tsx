@@ -20,6 +20,8 @@ export const CoinsAndPassView: React.FC = () => {
     claimDailyReward,
     isDailyRewardClaimed,
     dailyRewardCountdown,
+    dailyStreak,
+    resetDailyRewardForTest,
     isPassActive,
     passRemainingSeconds,
     activatePass,
@@ -111,16 +113,48 @@ export const CoinsAndPassView: React.FC = () => {
         </div>
 
         {/* Daily Reward Card */}
-        <div className="p-4 rounded-3xl glass-card border border-pink-500/20 space-y-2.5">
+        <div className="p-4 rounded-3xl glass-card border border-pink-500/20 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Gift className="w-5 h-5 text-pink-400" />
               <div>
                 <h4 className="text-sm font-bold text-slate-100">Daily Reward</h4>
-                <p className="text-xs text-slate-400">Claim your free daily coins.</p>
+                <p className="text-xs text-slate-400">Claim your free daily coins & build streak.</p>
               </div>
             </div>
-            <span className="text-emerald-400 font-bold font-mono text-sm">+10 🪙</span>
+            <span className="text-emerald-400 font-bold font-mono text-sm">
+              +{[10, 20, 30, 50, 75, 100, 250][(dailyStreak - 1) % 7]} 🪙
+            </span>
+          </div>
+
+          {/* 7-Day Streak Pills */}
+          <div className="grid grid-cols-7 gap-1 text-center">
+            {[10, 20, 30, 50, 75, 100, 250].map((amt, idx) => {
+              const dayNum = idx + 1;
+              const isCompleted = dayNum < dailyStreak || (dayNum === dailyStreak && isDailyRewardClaimed);
+              const isToday = dayNum === dailyStreak && !isDailyRewardClaimed;
+
+              return (
+                <div
+                  key={dayNum}
+                  className={`p-1.5 rounded-xl border flex flex-col items-center justify-between transition-all ${
+                    isCompleted
+                      ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-400'
+                      : isToday
+                      ? 'bg-gradient-to-b from-pink-900/60 to-purple-900/60 border-pink-500 text-pink-300 ring-2 ring-pink-500/40 shadow-lg scale-105'
+                      : 'bg-slate-900/60 border-slate-800 text-slate-400 opacity-60'
+                  }`}
+                >
+                  <span className="text-[9px] font-bold">D{dayNum}</span>
+                  <span className="text-[11px] font-extrabold font-mono mt-0.5">+{amt}</span>
+                  {isCompleted ? (
+                    <Check className="w-3 h-3 text-emerald-400 mt-1" />
+                  ) : (
+                    <span className="text-[9px] text-amber-400 mt-1">🪙</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           <button
@@ -129,22 +163,30 @@ export const CoinsAndPassView: React.FC = () => {
             className={`w-full py-2.5 rounded-2xl font-bold text-xs tracking-wider transition-all flex items-center justify-center gap-1.5 ${
               isDailyRewardClaimed
                 ? 'bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 cursor-default'
-                : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.5)] active:scale-95'
+                : 'bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.5)] active:scale-95 animate-pulse'
             }`}
           >
             {isDailyRewardClaimed ? (
               <>
                 <Check className="w-4 h-4" />
-                <span>Claimed</span>
+                <span>Claimed for Today ✓</span>
               </>
             ) : (
-              <span>Claim Free 10 Coins</span>
+              <span>Claim Free +{[10, 20, 30, 50, 75, 100, 250][(dailyStreak - 1) % 7]} Coins</span>
             )}
           </button>
 
-          <p className="text-[10px] text-slate-400 text-center font-mono">
-            Next reward available in {dailyRewardCountdown}
-          </p>
+          <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono px-1">
+            <span>Next reward in {dailyRewardCountdown}</span>
+            {isDailyRewardClaimed && (
+              <button
+                onClick={() => resetDailyRewardForTest()}
+                className="text-[10px] text-pink-400/80 hover:text-pink-300 underline"
+              >
+                Reset for Demo Test
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Earn More Coins Card (from screenshot #15) */}

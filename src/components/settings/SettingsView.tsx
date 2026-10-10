@@ -18,6 +18,14 @@ import {
   RotateCcw,
   BadgeCheck,
   Brain,
+  Mic,
+  MapPin,
+  Bell,
+  Radio,
+  Database,
+  Layers,
+  AlertCircle,
+  X,
 } from 'lucide-react';
 import { PersonalityPreset } from '../../types';
 
@@ -33,6 +41,13 @@ export const SettingsView: React.FC = () => {
     addMemory,
     removeMemory,
     toggleMemory,
+    permissions,
+    requestMicrophonePermission,
+    requestLocationPermission,
+    requestNotificationPermission,
+    togglePermission,
+    grantAllPermissions,
+    speakText,
   } = useSara();
 
   const [activeTab, setActiveTab] = useState<'account' | 'perms' | 'controls' | 'api' | 'personality'>('account');
@@ -235,118 +250,419 @@ export const SettingsView: React.FC = () => {
         </div>
       )}
 
-      {/* 2. PERMS TAB (screenshots #13 & #14) */}
+      {/* 2. PERMS TAB (Interactive User-Granted Permission Center) */}
       {activeTab === 'perms' && (
-        <div className="space-y-4">
+        <div className="space-y-4 animate-in fade-in duration-200">
           {/* Permission Status Box */}
-          <div className="p-4 rounded-3xl glass-card-pink border border-pink-500/30 flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-bold text-slate-100">Permission Status</h3>
-              <p className="text-xs text-slate-300 mt-0.5">
-                All permissions granted — Sara is fully operational ✓
-              </p>
-            </div>
-            {/* 7/7 Circular Badge */}
-            <div className="w-14 h-14 rounded-full border-2 border-purple-500 flex flex-col items-center justify-center text-center bg-purple-950/40">
-              <span className="text-sm font-bold text-white">7/7</span>
-              <span className="text-[8px] text-purple-300 uppercase">Granted</span>
-            </div>
+          {(() => {
+            const grantedCount = [
+              permissions.microphone === 'granted',
+              permissions.location === 'granted',
+              permissions.notifications === 'granted',
+              permissions.wakeWord,
+              permissions.persistentMemory,
+              permissions.audioPlayback,
+              permissions.floatingOverlay,
+            ].filter(Boolean).length;
+
+            return (
+              <div className="p-4 rounded-3xl glass-card-pink border border-pink-500/30 flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-slate-100 flex items-center gap-1.5">
+                    <span>Permission Center</span>
+                    <Sparkles className="w-4 h-4 text-pink-400" />
+                  </h3>
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    ইউজার নিজে থেকে পারমিশন দিতে এবং নিয়ন্ত্রণ করতে পারবেন
+                  </p>
+                  <button
+                    onClick={() => grantAllPermissions()}
+                    className="mt-2.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white text-xs font-bold shadow-[0_0_12px_rgba(255,46,147,0.4)] active:scale-95 transition-all flex items-center gap-1.5"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>সব পারমিশন একসাথে দিন (Grant All)</span>
+                  </button>
+                </div>
+                {/* Dynamic Circular Badge */}
+                <div className="w-16 h-16 rounded-full border-2 border-purple-500 flex flex-col items-center justify-center text-center bg-purple-950/40 shrink-0">
+                  <span className="text-base font-extrabold text-white font-mono">{grantedCount}/7</span>
+                  <span className="text-[8px] text-purple-300 uppercase font-bold tracking-wider">Granted</span>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* USER CONTROLLED PERMISSIONS Header */}
+          <div className="flex items-center justify-between px-1">
+            <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+              USER PERMISSIONS & ACCESS CONTROL
+            </p>
+            <span className="text-[10px] text-pink-400 font-medium">Click to toggle or grant</span>
           </div>
 
-          {/* REQUIRED PERMISSIONS Header */}
-          <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider px-1">
-            REQUIRED PERMISSIONS
-          </p>
-
-          <div className="space-y-2">
-            {/* CORE: Default Assistant */}
-            <div className="p-3 rounded-2xl glass-card border border-pink-500/15 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-200">Default Assistant</p>
-                <p className="text-[11px] text-slate-400">Set Sara as your default voice assistant.</p>
+          <div className="space-y-2.5">
+            {/* 1. Microphone */}
+            <div className="p-3.5 rounded-2xl glass-card border border-pink-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-pink-500/15 flex items-center justify-center text-pink-400 shrink-0 mt-0.5">
+                  <Mic className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-bold text-slate-100">Microphone (মাইক্রোফোন)</p>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
+                        permissions.microphone === 'granted'
+                          ? 'bg-emerald-950/80 border-emerald-500/40 text-emerald-400'
+                          : permissions.microphone === 'denied'
+                          ? 'bg-rose-950/80 border-rose-500/40 text-rose-400'
+                          : 'bg-amber-950/80 border-amber-500/40 text-amber-400'
+                      }`}
+                    >
+                      {permissions.microphone === 'granted' ? (
+                        <>
+                          <Check className="w-2.5 h-2.5" />
+                          <span>অনুমোদিত (Granted)</span>
+                        </>
+                      ) : permissions.microphone === 'denied' ? (
+                        <>
+                          <X className="w-2.5 h-2.5" />
+                          <span>বাতিল (Denied)</span>
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="w-2.5 h-2.5" />
+                          <span>অনুমোদন প্রয়োজন (Prompt)</span>
+                        </>
+                      )}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    রিয়েল-টাইম ভয়েস কমান্ড ও সারার সাথে কথা বলার জন্য মাইক পারমিশন।
+                  </p>
+                </div>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 flex items-center gap-1">
-                <span>Granted</span>
-                <Check className="w-3 h-3" />
-              </span>
-            </div>
 
-            {/* CORE: Microphone */}
-            <div className="p-3 rounded-2xl glass-card border border-pink-500/15 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-200">Microphone</p>
-                <p className="text-[11px] text-slate-400">Voice input, commands, and real-time speech.</p>
-              </div>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 flex items-center gap-1">
-                <span>Granted</span>
-                <Check className="w-3 h-3" />
-              </span>
-            </div>
-
-            {/* SYSTEM: Display Over Other Apps */}
-            <div className="p-3 rounded-2xl glass-card border border-pink-500/15 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-200">Display Over Other Apps</p>
-                <p className="text-[11px] text-slate-400">Show floating Sara button and overlay UI.</p>
-              </div>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 flex items-center gap-1">
-                <span>Granted</span>
-                <Check className="w-3 h-3" />
-              </span>
-            </div>
-
-            {/* SYSTEM: Post Notifications */}
-            <div className="p-3 rounded-2xl glass-card border border-pink-500/15 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-200">Post Notifications</p>
-                <p className="text-[11px] text-slate-400">Send alerts, reminders and status updates.</p>
-              </div>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 flex items-center gap-1">
-                <span>Granted</span>
-                <Check className="w-3 h-3" />
-              </span>
-            </div>
-
-            {/* DEVICE: Precise Location */}
-            <div className="p-3 rounded-2xl glass-card border border-pink-500/15 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-200">Precise Location</p>
-                <p className="text-[11px] text-slate-400">Accurate location for weather and navigation.</p>
-              </div>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 flex items-center gap-1">
-                <span>Granted</span>
-                <Check className="w-3 h-3" />
-              </span>
-            </div>
-
-            {/* MEDIA: Screen Capture */}
-            <div className="p-3 rounded-2xl glass-card border border-pink-500/15 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-200">Screen Capture</p>
-                <p className="text-[11px] text-slate-400">Capture screen for visual context awareness.</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 flex items-center gap-1">
-                  <span>Granted</span>
-                  <Check className="w-3 h-3" />
-                </span>
-                <button className="px-2.5 py-1 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold flex items-center gap-1">
-                  <RotateCcw className="w-3 h-3" />
-                  <span>Restart</span>
+              <div className="flex items-center gap-2 self-end sm:self-center">
+                {permissions.microphone !== 'granted' && (
+                  <button
+                    onClick={() => requestMicrophonePermission()}
+                    className="px-3 py-1.5 rounded-xl bg-pink-600 hover:bg-pink-500 text-white text-xs font-bold shadow-sm active:scale-95 transition-all"
+                  >
+                    অনুমতি দিন
+                  </button>
+                )}
+                <button
+                  onClick={() => togglePermission('microphone')}
+                  className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
+                    permissions.microphone === 'granted' ? 'bg-pink-600' : 'bg-slate-700'
+                  }`}
+                  aria-label="Toggle Microphone"
+                >
+                  <div
+                    className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                      permissions.microphone === 'granted' ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
                 </button>
               </div>
             </div>
 
-            {/* MEDIA: Camera */}
-            <div className="p-3 rounded-2xl glass-card border border-pink-500/15 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-200">Camera</p>
-                <p className="text-[11px] text-slate-400">Use camera for visual commands and scanning.</p>
+            {/* 2. Location */}
+            <div className="p-3.5 rounded-2xl glass-card border border-pink-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-cyan-500/15 flex items-center justify-center text-cyan-400 shrink-0 mt-0.5">
+                  <MapPin className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-bold text-slate-100">Precise Location (লাইভ লোকেশন)</p>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
+                        permissions.location === 'granted'
+                          ? 'bg-emerald-950/80 border-emerald-500/40 text-emerald-400'
+                          : permissions.location === 'denied'
+                          ? 'bg-rose-950/80 border-rose-500/40 text-rose-400'
+                          : 'bg-amber-950/80 border-amber-500/40 text-amber-400'
+                      }`}
+                    >
+                      {permissions.location === 'granted' ? (
+                        <>
+                          <Check className="w-2.5 h-2.5" />
+                          <span>অনুমোদিত (Granted)</span>
+                        </>
+                      ) : permissions.location === 'denied' ? (
+                        <>
+                          <X className="w-2.5 h-2.5" />
+                          <span>বাতিল (Denied)</span>
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="w-2.5 h-2.5" />
+                          <span>অনুমোদন প্রয়োজন (Prompt)</span>
+                        </>
+                      )}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    তোমার এলাকার রিয়েল আবহাওয়া এবং গুগল ম্যাপস গ্রাউন্ডিংয়ের জন্য।
+                  </p>
+                </div>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 flex items-center gap-1">
-                <span>Granted</span>
-                <Check className="w-3 h-3" />
-              </span>
+
+              <div className="flex items-center gap-2 self-end sm:self-center">
+                {permissions.location !== 'granted' && (
+                  <button
+                    onClick={() => requestLocationPermission()}
+                    className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold shadow-sm active:scale-95 transition-all"
+                  >
+                    অনুমতি দিন
+                  </button>
+                )}
+                <button
+                  onClick={() => togglePermission('location')}
+                  className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
+                    permissions.location === 'granted' ? 'bg-cyan-600' : 'bg-slate-700'
+                  }`}
+                  aria-label="Toggle Location"
+                >
+                  <div
+                    className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                      permissions.location === 'granted' ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* 3. Post Notifications */}
+            <div className="p-3.5 rounded-2xl glass-card border border-pink-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-400 shrink-0 mt-0.5">
+                  <Bell className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-bold text-slate-100">Notifications (নোটিফিকেশন)</p>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
+                        permissions.notifications === 'granted'
+                          ? 'bg-emerald-950/80 border-emerald-500/40 text-emerald-400'
+                          : permissions.notifications === 'denied'
+                          ? 'bg-rose-950/80 border-rose-500/40 text-rose-400'
+                          : 'bg-amber-950/80 border-amber-500/40 text-amber-400'
+                      }`}
+                    >
+                      {permissions.notifications === 'granted' ? (
+                        <>
+                          <Check className="w-2.5 h-2.5" />
+                          <span>সক্রিয় (Active)</span>
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="w-2.5 h-2.5" />
+                          <span>নিষ্ক্রিয় (Disabled)</span>
+                        </>
+                      )}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    ডেইলি রিওয়ার্ড রিমাইন্ডার ও সারার ভালোবাসার মেসেজ পাওয়ার জন্য।
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-center">
+                {permissions.notifications !== 'granted' && (
+                  <button
+                    onClick={() => requestNotificationPermission()}
+                    className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-sm active:scale-95 transition-all"
+                  >
+                    অনুমতি দিন
+                  </button>
+                )}
+                <button
+                  onClick={() => togglePermission('notifications')}
+                  className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
+                    permissions.notifications === 'granted' ? 'bg-purple-600' : 'bg-slate-700'
+                  }`}
+                  aria-label="Toggle Notifications"
+                >
+                  <div
+                    className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                      permissions.notifications === 'granted' ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* 4. Wake Word Background Listening */}
+            <div className="p-3.5 rounded-2xl glass-card border border-pink-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
+                  <Radio className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-bold text-slate-100">Wake Word (হ্যান্ডস-ফ্রি ওয়েক ওয়ার্ড)</p>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
+                        permissions.wakeWord
+                          ? 'bg-emerald-950/80 border-emerald-500/40 text-emerald-400'
+                          : 'bg-slate-800 border-slate-700 text-slate-400'
+                      }`}
+                    >
+                      {permissions.wakeWord ? 'চালু (ON)' : 'বন্ধ (OFF)'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    "Hey SARA" বা "সারা" বললে স্বয়ংক্রিয়ভাবে ভয়েস মোড চালু হবে।
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => togglePermission('wakeWord')}
+                className={`w-11 h-6 rounded-full transition-colors relative p-0.5 self-end sm:self-center ${
+                  permissions.wakeWord ? 'bg-emerald-600' : 'bg-slate-700'
+                }`}
+                aria-label="Toggle Wake Word"
+              >
+                <div
+                  className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                    permissions.wakeWord ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* 5. Persistent Memories */}
+            <div className="p-3.5 rounded-2xl glass-card border border-pink-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-400 shrink-0 mt-0.5">
+                  <Database className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-bold text-slate-100">Memory Storage (মেমোরি ও স্টোরেজ)</p>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
+                        permissions.persistentMemory
+                          ? 'bg-emerald-950/80 border-emerald-500/40 text-emerald-400'
+                          : 'bg-slate-800 border-slate-700 text-slate-400'
+                      }`}
+                    >
+                      {permissions.persistentMemory ? 'অনুমোদিত (Granted)' : 'বন্ধ (Disabled)'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    তোমার পছন্দ, প্রিয় বিষয় ও কথোপকথন স্থানীয়ভাবে সংরক্ষণ করার অনুমতি।
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => togglePermission('persistentMemory')}
+                className={`w-11 h-6 rounded-full transition-colors relative p-0.5 self-end sm:self-center ${
+                  permissions.persistentMemory ? 'bg-amber-600' : 'bg-slate-700'
+                }`}
+                aria-label="Toggle Persistent Memory"
+              >
+                <div
+                  className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                    permissions.persistentMemory ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* 6. Audio & Speech Output */}
+            <div className="p-3.5 rounded-2xl glass-card border border-pink-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-rose-500/15 flex items-center justify-center text-rose-400 shrink-0 mt-0.5">
+                  <Volume2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-bold text-slate-100">Speech Audio (ভয়েস আউটপুট)</p>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
+                        permissions.audioPlayback
+                          ? 'bg-emerald-950/80 border-emerald-500/40 text-emerald-400'
+                          : 'bg-slate-800 border-slate-700 text-slate-400'
+                      }`}
+                    >
+                      {permissions.audioPlayback ? 'অনুমোদিত (Granted)' : 'বন্ধ (Disabled)'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    বাংলা ও ইংরেজিতে সারার মিষ্টি কণ্ঠস্বর শোনার অনুমতি।
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-center">
+                <button
+                  onClick={() => speakText('পারমিশন চেক সম্পূর্ণ হয়েছে বাবু! আমি তোমার কথা শুনছি। ❤️', 'romantic')}
+                  className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
+                >
+                  ভয়েস টেস্ট
+                </button>
+                <button
+                  onClick={() => togglePermission('audioPlayback')}
+                  className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
+                    permissions.audioPlayback ? 'bg-rose-600' : 'bg-slate-700'
+                  }`}
+                  aria-label="Toggle Audio Playback"
+                >
+                  <div
+                    className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                      permissions.audioPlayback ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* 7. Display Over Other Apps / Floating Widget */}
+            <div className="p-3.5 rounded-2xl glass-card border border-pink-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-indigo-500/15 flex items-center justify-center text-indigo-400 shrink-0 mt-0.5">
+                  <Layers className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-bold text-slate-100">Floating Overlay (ওভারলে পারমিশন)</p>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
+                        permissions.floatingOverlay
+                          ? 'bg-emerald-950/80 border-emerald-500/40 text-emerald-400'
+                          : 'bg-slate-800 border-slate-700 text-slate-400'
+                      }`}
+                    >
+                      {permissions.floatingOverlay ? 'চালু (ON)' : 'বন্ধ (OFF)'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    স্ক্রিনে দ্রুত যোগাযোগের জন্য ভাসমান সারার বাটন ও উইজেট প্রদর্শন।
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => togglePermission('floatingOverlay')}
+                className={`w-11 h-6 rounded-full transition-colors relative p-0.5 self-end sm:self-center ${
+                  permissions.floatingOverlay ? 'bg-indigo-600' : 'bg-slate-700'
+                }`}
+                aria-label="Toggle Floating Overlay"
+              >
+                <div
+                  className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                    permissions.floatingOverlay ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
             </div>
           </div>
         </div>

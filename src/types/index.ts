@@ -168,3 +168,14 @@ export interface MoodRecord {
   habitsCompleted: string[];
 }
 
+export interface AppPermissions {
+  microphone: 'granted' | 'denied' | 'prompt';
+  location: 'granted' | 'denied' | 'prompt';
+  notifications: 'granted' | 'denied' | 'default';
+  wakeWord: boolean;
+  persistentMemory: boolean;
+  audioPlayback: boolean;
+  floatingOverlay: boolean;
+}
+
+

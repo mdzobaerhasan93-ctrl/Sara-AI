@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Lock,
   Cpu,
@@ -12,11 +12,14 @@ import {
   Star,
   Send,
   BarChart2,
-  Dices,
+  Gift,
+  Check,
+  Flame,
   Minus,
   Plus,
   Play,
   Activity,
+  Rotate3d,
 } from 'lucide-react';
 import { useSara } from '../../context/SaraContext';
 import { AICoreOrb } from '../core/AICoreOrb';
@@ -39,7 +42,14 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
     speakText,
     isSpeaking,
     activeAvatarId,
+    coinBalance,
+    claimDailyReward,
+    isDailyRewardClaimed,
+    dailyRewardCountdown,
+    dailyStreak,
   } = useSara();
+
+  const [coreViewMode, setCoreViewMode] = useState<'3d' | 'orb'>('3d');
 
   const handleTimeoutChange = (delta: number) => {
     const current = userProfile.autoTimeoutSeconds || 10;
@@ -138,35 +148,83 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
           </button>
         </div>
 
-        {/* Right Side: AI CORE UNIT Card */}
-        <div className="col-span-7 rounded-3xl glass-card-pink border border-pink-500/30 p-3.5 flex flex-col items-center justify-between text-center relative overflow-hidden shadow-[0_0_25px_rgba(255,46,147,0.15)]">
+        {/* Right Side: 3D REAL HUMAN AVATAR & AI CORE Card */}
+        <div className="col-span-7 rounded-3xl glass-card-pink border border-pink-500/30 p-3 flex flex-col items-center justify-between text-center relative overflow-hidden shadow-[0_0_25px_rgba(255,46,147,0.2)]">
           {/* Subtle cosmic background glow */}
-          <div className="absolute inset-0 bg-radial from-pink-900/20 via-transparent to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-radial from-pink-900/30 via-purple-950/20 to-transparent pointer-events-none" />
 
-          {/* Header Tag */}
-          <p className="text-[11px] font-bold tracking-widest text-slate-300 uppercase">
-            • AI CORE UNIT •
-          </p>
+          {/* Header Controls: Mode Switcher (3D Avatar vs Orb) */}
+          <div className="relative z-10 w-full flex items-center justify-between mb-1">
+            <div className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-pink-500 animate-ping" />
+              <p className="text-[10px] font-bold tracking-wider text-pink-300 uppercase">
+                {coreViewMode === '3d' ? '3D HUMAN' : 'AI ORB'}
+              </p>
+            </div>
 
-          {/* Central Holographic Particle Sphere */}
-          <div className="my-1">
-            <AICoreOrb size={170} onClick={onOpenVoice} />
+            {/* Toggle switch */}
+            <div className="flex items-center bg-slate-900/80 p-0.5 rounded-xl border border-pink-500/30">
+              <button
+                onClick={() => setCoreViewMode('3d')}
+                className={`px-2 py-0.5 rounded-lg text-[9px] font-bold transition-all flex items-center gap-1 ${
+                  coreViewMode === '3d'
+                    ? 'bg-pink-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Rotate3d className="w-2.5 h-2.5" />
+                <span>3D</span>
+              </button>
+              <button
+                onClick={() => setCoreViewMode('orb')}
+                className={`px-2 py-0.5 rounded-lg text-[9px] font-bold transition-all ${
+                  coreViewMode === 'orb'
+                    ? 'bg-purple-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>Orb</span>
+              </button>
+            </div>
           </div>
 
-          {/* Active status */}
-          <div className="flex items-center gap-1 text-[11px] font-bold text-pink-400 tracking-wider">
+          {/* Central 3D Real Human Animated Avatar or Holographic Orb */}
+          <div className="relative z-10 my-0.5 w-full flex items-center justify-center">
+            {coreViewMode === '3d' ? (
+              <div
+                onClick={onOpenVoice}
+                className="w-full flex justify-center cursor-pointer group"
+                title="Click to talk with Sara in 3D"
+              >
+                <LiveTalkingAvatar
+                  size="compact"
+                  showStatusBadge={true}
+                  className="w-full transition-transform group-hover:scale-102"
+                />
+              </div>
+            ) : (
+              <div className="my-1">
+                <AICoreOrb size={170} onClick={onOpenVoice} />
+              </div>
+            )}
+          </div>
+
+          {/* Dynamic Voice Reaction & Status */}
+          <div className="relative z-10 flex items-center gap-1 text-[10px] font-bold text-pink-400 tracking-wider">
             <span>♥</span>
-            <span className="uppercase text-[10px]">ACTIVE & LEARNING</span>
+            <span className="uppercase text-[9px]">
+              {isSpeaking ? 'SPEAKING & REACTING' : 'VOICE-REACTIVE 3D'}
+            </span>
             <span>♥</span>
           </div>
 
-          {/* Start Sara Button */}
+          {/* Start Sara / Talk Button */}
           <button
             onClick={onOpenVoice}
-            className="w-full mt-2.5 py-2.5 rounded-2xl bg-gradient-to-r from-pink-600 via-rose-500 to-pink-600 hover:from-pink-500 hover:to-pink-500 text-white font-bold text-xs tracking-wider flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(255,46,147,0.5)] active:scale-95 transition-all"
+            className="relative z-10 w-full mt-2 py-2 rounded-2xl bg-gradient-to-r from-pink-600 via-rose-500 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-bold text-xs tracking-wider flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(255,46,147,0.5)] active:scale-95 transition-all"
           >
             <span>START SARA</span>
-            <Mic className="w-4 h-4" />
+            <Mic className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -337,27 +395,87 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
         </p>
       </div>
 
-      {/* 4. GAMES SECTION from screenshot #9 */}
+      {/* 4. DAILY REWARD & STREAK SECTION */}
       <div className="p-4 rounded-3xl glass-card border border-pink-500/20 space-y-3">
-        <h3 className="text-xs font-bold text-slate-200 tracking-wider uppercase">
-          GAMES
-        </h3>
-
-        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-slate-900/90 to-purple-950/40 border border-purple-500/30 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-pink-500/20 border border-pink-500/30 flex items-center justify-center text-pink-400">
-              <Dices className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="text-sm font-bold text-slate-100">Play Ludo</h4>
-              <p className="text-xs text-slate-400">Single Player vs Sara Bot</p>
-            </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Gift className="w-4 h-4 text-pink-400" />
+            <h3 className="text-xs font-bold text-slate-200 tracking-wider uppercase">
+              DAILY REWARD & STREAK
+            </h3>
           </div>
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-pink-500/10 border border-pink-500/30 text-pink-400 text-xs font-bold">
+            <Flame className="w-3.5 h-3.5 fill-pink-500 text-pink-400 animate-pulse" />
+            <span>Day {dailyStreak} Streak</span>
+          </div>
+        </div>
+
+        {/* 7-Day Streak Pills */}
+        <div className="grid grid-cols-7 gap-1 text-center">
+          {[10, 20, 30, 50, 75, 100, 250].map((amt, idx) => {
+            const dayNum = idx + 1;
+            const isCompleted = dayNum < dailyStreak || (dayNum === dailyStreak && isDailyRewardClaimed);
+            const isToday = dayNum === dailyStreak && !isDailyRewardClaimed;
+
+            return (
+              <div
+                key={dayNum}
+                className={`p-1.5 rounded-xl border flex flex-col items-center justify-between transition-all ${
+                  isCompleted
+                    ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-400'
+                    : isToday
+                    ? 'bg-gradient-to-b from-pink-900/60 to-purple-900/60 border-pink-500 text-pink-300 ring-2 ring-pink-500/40 shadow-lg scale-105'
+                    : 'bg-slate-900/60 border-slate-800 text-slate-400 opacity-60'
+                }`}
+              >
+                <span className="text-[9px] font-bold">D{dayNum}</span>
+                <span className="text-[11px] font-extrabold font-mono mt-0.5">+{amt}</span>
+                {isCompleted ? (
+                  <Check className="w-3 h-3 text-emerald-400 mt-1" />
+                ) : (
+                  <span className="text-[9px] text-amber-400 mt-1">🪙</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Claim Action Box */}
+        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-slate-900/90 to-purple-950/40 border border-purple-500/30 flex items-center justify-between">
+          <div>
+            <h4 className="text-sm font-bold text-slate-100 flex items-center gap-1.5">
+              <span>আজকের রিওয়ার্ড:</span>
+              <span className="text-emerald-400 font-mono font-extrabold">
+                +{[10, 20, 30, 50, 75, 100, 250][(dailyStreak - 1) % 7]} Coins
+              </span>
+            </h4>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              {isDailyRewardClaimed
+                ? `আজকের রিওয়ার্ড ক্লেইম করা হয়েছে ✓ পরবর্তী রিওয়ার্ড: ${dailyRewardCountdown}`
+                : 'প্রতিদিন লগইন করে ফ্রিতে সারার কয়েন জিতে নিন!'}
+            </p>
+          </div>
+
           <button
-            onClick={() => onNavigate('ludo')}
-            className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold tracking-wider shadow-[0_0_12px_rgba(16,185,129,0.4)] active:scale-95 transition-all"
+            onClick={() => claimDailyReward()}
+            disabled={isDailyRewardClaimed}
+            className={`px-4 py-2 rounded-xl text-xs font-bold tracking-wider transition-all flex items-center gap-1.5 shrink-0 ${
+              isDailyRewardClaimed
+                ? 'bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 cursor-default'
+                : 'bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white shadow-[0_0_15px_rgba(16,185,129,0.5)] active:scale-95 animate-pulse'
+            }`}
           >
-            PLAY
+            {isDailyRewardClaimed ? (
+              <>
+                <Check className="w-4 h-4" />
+                <span>Claimed</span>
+              </>
+            ) : (
+              <>
+                <Gift className="w-4 h-4" />
+                <span>Claim Now</span>
+              </>
+            )}
           </button>
         </div>
       </div>
