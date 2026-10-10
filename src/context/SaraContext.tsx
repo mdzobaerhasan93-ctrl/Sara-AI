@@ -805,7 +805,10 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const response = await fetch('/api/tts', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-gemini-api-key': localStorage.getItem('sara_custom_gemini_key') || '',
+          },
           body: JSON.stringify({
             text: speechClean,
             voice: voiceSettings.voice || 'Zephyr',
@@ -1101,7 +1104,10 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (options?.isThinking) {
         const thinkRes = await fetch('/api/think', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-gemini-api-key': localStorage.getItem('sara_custom_gemini_key') || '',
+          },
           body: JSON.stringify({
             prompt: content,
             systemInstruction: `You are Sara, an intelligent companion performing High-Reasoning analysis for ${userProfile.name}. Be detailed, empathetic, and structurally clear.`,
@@ -1149,7 +1155,10 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const mapsRes = await fetch('/api/maps-grounding', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-gemini-api-key': localStorage.getItem('sara_custom_gemini_key') || '',
+          },
           body: JSON.stringify({
             query: content,
             latitude: lat,
@@ -1179,7 +1188,10 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const activeMemories = memories.filter((m) => m.active);
       const chatRes = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-gemini-api-key': localStorage.getItem('sara_custom_gemini_key') || '',
+        },
         body: JSON.stringify({
           messages: [...messages, userMsg].map((m) => ({
             role: m.role,

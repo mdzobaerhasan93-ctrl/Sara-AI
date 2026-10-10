@@ -17,11 +17,12 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.use(express.json({ limit: '15mb' }));
 
-// Initialize GoogleGenAI server-side with telemetry header
-const getAIClient = () => {
-  const apiKey = process.env.GEMINI_API_KEY;
+// Initialize GoogleGenAI server-side with telemetry header and custom API key support
+const getAIClient = (req?: express.Request) => {
+  const customKey = req?.headers['x-gemini-api-key'] as string;
+  const apiKey = (customKey && customKey.trim().length > 0) ? customKey.trim() : process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    console.warn('GEMINI_API_KEY not configured in environment.');
+    console.warn('GEMINI_API_KEY not configured in environment or request header.');
   }
   return new GoogleGenAI({
     apiKey: apiKey || '',
@@ -48,7 +49,7 @@ app.post('/api/chat', async (req, res) => {
       model = 'gemini-3.5-flash',
     } = req.body;
 
-    const ai = getAIClient();
+    const ai = getAIClient(req);
     const warmth = personalitySettings.warmth ?? 90;
     const playfulness = personalitySettings.playfulness ?? 85;
     const romance = personalitySettings.romance ?? 80;
@@ -253,7 +254,7 @@ function generateSaraBengaliCompanionResponse(
 app.post('/api/think', async (req, res) => {
   try {
     const { prompt, systemInstruction } = req.body;
-    const ai = getAIClient();
+    const ai = getAIClient(req);
 
     try {
       const response = await ai.models.generateContent({
@@ -392,7 +393,7 @@ app.post('/api/tts', async (req, res) => {
     }
 
     // 2. Try Gemini 3.8 Flash TTS for non-Bengali or secondary
-    const ai = getAIClient();
+    const ai = getAIClient(req);
     try {
       const response = await ai.models.generateContent({
         model: 'gemini-3.8-flash-tts',
@@ -459,7 +460,7 @@ app.post('/api/tts', async (req, res) => {
 app.post('/api/maps-grounding', async (req, res) => {
   try {
     const { query, latitude, longitude } = req.body;
-    const ai = getAIClient();
+    const ai = getAIClient(req);
 
     const config: any = {
       tools: [{ googleMaps: {} }],

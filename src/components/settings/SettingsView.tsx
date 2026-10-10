@@ -30,6 +30,7 @@ import {
 import { PersonalityPreset } from '../../types';
 import { GestureMapView } from './GestureMapView';
 import { AutomationsView } from '../automations/AutomationsView';
+import { AuthModal } from '../auth/AuthModal';
 
 export const SettingsView: React.FC = () => {
   const {
@@ -59,6 +60,9 @@ export const SettingsView: React.FC = () => {
   const [showAddMemoryModal, setShowAddMemoryModal] = useState<boolean>(false);
   const [newMemoryCategory, setNewMemoryCategory] = useState<any>('Personal');
   const [newMemoryText, setNewMemoryText] = useState<string>('');
+  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  const [customGeminiKey, setCustomGeminiKey] = useState<string>(() => localStorage.getItem('sara_custom_gemini_key') || '');
+  const [apiSavedMsg, setApiSavedMsg] = useState<boolean>(false);
 
   // Personality Presets
   const personalityPresets: Array<{ id: PersonalityPreset; label: string; desc: string }> = [
@@ -281,8 +285,25 @@ export const SettingsView: React.FC = () => {
               </select>
             </div>
           </div>
+
+          {/* Logout Button */}
+          <div className="pt-1">
+            <button
+              onClick={() => {
+                updateUserProfile({ name: 'Guest', email: '', avatarUrl: '' });
+                speakText('সফলভাবে লগআউট করা হয়েছে। আবার লগইন করো সোনা! ❤️', 'caring');
+                setShowAuthModal(true);
+              }}
+              className="w-full py-3 rounded-2xl bg-rose-600/20 border border-rose-500/40 hover:bg-rose-600/30 text-rose-300 font-bold text-xs flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>লগআউট করুন (Log Out & Sign Out)</span>
+            </button>
+          </div>
         </div>
       )}
+
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
 
       {/* 2. PERMS TAB (Interactive User-Granted Permission Center) */}
       {activeTab === 'perms' && (
@@ -876,25 +897,53 @@ export const SettingsView: React.FC = () => {
 
           <div className="space-y-3">
             {/* Gemini API */}
-            <div className="p-4 rounded-3xl glass-card border border-pink-500/20 space-y-2">
+            <div className="p-4 rounded-3xl glass-card border border-pink-500/30 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-full bg-pink-500/15 flex items-center justify-center text-pink-400">
                     <Sparkles className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-slate-100">Gemini API</h4>
-                    <p className="text-[11px] text-slate-400">Server-Side Multi-Modal Engine</p>
+                    <h4 className="text-xs font-bold text-slate-100">Gemini API Key (ইউজার জেমিনি এপিআই কি)</h4>
+                    <p className="text-[11px] text-slate-400">Enter your own API key & connect</p>
                   </div>
                 </div>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950/80 border border-emerald-500/40 text-emerald-400">
-                  Active
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${customGeminiKey ? 'bg-emerald-950/80 border-emerald-500/40 text-emerald-400' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
+                  {customGeminiKey ? 'Custom Connected' : 'Default / Active'}
                 </span>
               </div>
-              <div className="p-2.5 rounded-xl bg-black/40 border border-slate-800 flex items-center justify-between text-xs font-mono">
-                <span className="text-slate-400">AIza••••••••••••••••••••••••••••••••••••</span>
-                <span className="text-[10px] text-pink-400 font-sans font-bold">MANAGED IN SECRETS</span>
-              </div>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                localStorage.setItem('sara_custom_gemini_key', customGeminiKey.trim());
+                setApiSavedMsg(true);
+                speakText('জেমিনি এপিআই কি সফলভাবে কানেক্ট ও সেভ করা হয়েছে বাবু! ❤️', 'happy');
+                setTimeout(() => setApiSavedMsg(false), 3000);
+              }} className="space-y-2.5">
+                <input
+                  type="password"
+                  value={customGeminiKey}
+                  onChange={(e) => setCustomGeminiKey(e.target.value)}
+                  placeholder="AIzaSy... (Enter your custom Gemini API key)"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-pink-300 font-mono focus:outline-none focus:border-pink-500"
+                />
+                <div className="flex items-center justify-between">
+                  {apiSavedMsg ? (
+                    <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>সফলভাবে কানেক্ট করা হয়েছে! (Connected Successfully)</span>
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-400">নন-স্টপ ব্যবহারের জন্য নিজস্ব এপিআই কি বসান।</span>
+                  )}
+                  <button
+                    type="submit"
+                    className="px-3.5 py-1.5 rounded-xl bg-pink-600 hover:bg-pink-500 text-white font-bold text-xs shadow-md active:scale-95 transition-all flex items-center gap-1"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>সাবমিট (Connect)</span>
+                  </button>
+                </div>
+              </form>
             </div>
 
             {/* Google Maps Grounding API */}
