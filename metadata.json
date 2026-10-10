@@ -1,0 +1,11 @@
+{
+  "name": "SARA AI — Virtual Companion & Voice Assistant",
+  "description": "Your AI. Your Voice. Your Companion. Emotionally expressive AI companion with live talking avatar, voice conversation, science intelligence, and permission-controlled actions.",
+  "requestFramePermissions": [
+    "microphone",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

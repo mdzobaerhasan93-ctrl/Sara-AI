@@ -1,0 +1,145 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-dark: #05050f;
+    --card-dark: #0d0d22;
+    --card-border: rgba(255, 46, 147, 0.2);
+    --pink-neon: #ff2e93;
+    --purple-neon: #b026ff;
+    --cyan-neon: #00f2fe;
+  }
+
+  body {
+    background-color: #05050f;
+    color: #f1f5f9;
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #070716;
+}
+::-webkit-scrollbar-thumb {
+  background: #231d42;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #ff2e93;
+}
+
+/* Glowing Neon Utilities */
+.neon-glow-pink {
+  box-shadow: 0 0 25px rgba(255, 46, 147, 0.45);
+}
+
+.neon-glow-cyan {
+  box-shadow: 0 0 25px rgba(0, 242, 254, 0.4);
+}
+
+.neon-glow-purple {
+  box-shadow: 0 0 25px rgba(176, 38, 255, 0.4);
+}
+
+.neon-text-pink {
+  text-shadow: 0 0 12px rgba(255, 46, 147, 0.7);
+}
+
+.neon-text-green {
+  text-shadow: 0 0 12px rgba(16, 185, 129, 0.7);
+}
+
+.glass-card {
+  background: rgba(14, 13, 33, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card-pink {
+  background: rgba(22, 11, 38, 0.75);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 46, 147, 0.25);
+}
+
+.glass-card-green {
+  background: rgba(8, 28, 24, 0.75);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+/* Animations */
+@keyframes pulse-heartbeat {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+    filter: drop-shadow(0 0 12px #ff2e93);
+  }
+}
+
+.animate-heartbeat {
+  animation: pulse-heartbeat 1.8s ease-in-out infinite;
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 20s linear infinite;
+}
+
+@keyframes spin-reverse-slow {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+.animate-spin-reverse {
+  animation: spin-reverse-slow 15s linear infinite;
+}
+
+@keyframes float-gentle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-float {
+  animation: float-gentle 4s ease-in-out infinite;
+}
+
+/* Safe Area Inset Support for Mobile Notch & Nav Bar */
+.safe-pb {
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+.safe-pt {
+  padding-top: env(safe-area-inset-top, 16px);
+}

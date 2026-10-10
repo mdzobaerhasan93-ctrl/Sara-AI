@@ -1,0 +1,1044 @@
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import {
+  AssistantState,
+  EmotionState,
+  PersonalityPreset,
+  PersonalitySettings,
+  VoiceSettings,
+  UserProfile,
+  ActionProposal,
+  ChatMessage,
+  MemoryItem,
+  AutomationItem,
+  ActivityItem,
+  CoinTransaction,
+} from '../types';
+
+interface SaraContextType {
+  // Assistant Status
+  assistantState: AssistantState;
+  setAssistantState: (state: AssistantState) => void;
+  currentEmotion: EmotionState;
+  setCurrentEmotion: (emotion: EmotionState) => void;
+  isSpeaking: boolean;
+  audioFrequencyData: number[];
+
+  // Profile & Settings
+  userProfile: UserProfile;
+  updateUserProfile: (profile: Partial<UserProfile>) => void;
+  personalitySettings: PersonalitySettings;
+  updatePersonalitySettings: (settings: Partial<PersonalitySettings>) => void;
+  voiceSettings: VoiceSettings;
+  updateVoiceSettings: (settings: Partial<VoiceSettings>) => void;
+  activeAvatarId: string;
+  setActiveAvatarId: (id: string) => void;
+
+  // Chat & AI
+  messages: ChatMessage[];
+  addMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
+  sendMessage: (content: string, options?: { model?: string; isThinking?: boolean; useMaps?: boolean }) => Promise<void>;
+  clearMessages: () => void;
+  isLoading: boolean;
+
+  // Voice & Speech
+  speakText: (text: string, emotion?: EmotionState) => Promise<void>;
+  stopSpeech: () => void;
+
+  // Action & Permission Pipeline
+  pendingActions: ActionProposal[];
+  approveAction: (actionId: string) => Promise<void>;
+  rejectAction: (actionId: string) => void;
+
+  // Memory
+  memories: MemoryItem[];
+  addMemory: (category: MemoryItem['category'], content: string) => void;
+  removeMemory: (id: string) => void;
+  toggleMemory: (id: string) => void;
+
+  // Automations & Activity
+  automations: AutomationItem[];
+  toggleAutomation: (id: string) => void;
+  activityLogs: ActivityItem[];
+  addActivityLog: (log: Omit<ActivityItem, 'id' | 'timestamp'>) => void;
+
+  // Coins & Pass
+  coinBalance: number;
+  coinTransactions: CoinTransaction[];
+  claimDailyReward: () => boolean;
+  isDailyRewardClaimed: boolean;
+  dailyRewardCountdown: string;
+  isPassActive: boolean;
+  passRemainingSeconds: number;
+  activatePass: (hours?: number) => boolean;
+  watchRewardedAd: () => boolean;
+  adsWatchedToday: number;
+
+  // System Diagnostics
+  cpuPower: number;
+  networkConnected: boolean;
+  systemOperational: boolean;
+}
+
+const SaraContext = createContext<SaraContextType | undefined>(undefined);
+
+export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // 1. Assistant Core State
+  const [assistantState, setAssistantState] = useState<AssistantState>('IDLE');
+  const [currentEmotion, setCurrentEmotion] = useState<EmotionState>('caring');
+  const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
+  const [audioFrequencyData, setAudioFrequencyData] = useState<number[]>([10, 25, 45, 20, 15]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  // Audio references
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animFrameRef = useRef<number | null>(null);
+
+  // 2. User Profile (persisted)
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => {
+    const saved = localStorage.getItem('sara_user_profile');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { }
+    }
+    return {
+      id: 'usr_zobaer_01',
+      name: 'zobaer',
+      email: 'zobaerhasan431@gmail.com',
+      avatarUrl: '',
+      language: 'Bengali',
+      timezone: 'UTC+6 GMT+06:00',
+      personality: 'GirlFriend',
+      loveMode: true,
+      wakeWord: 'Hello Hello',
+      dismissWord: 'Bye Bye',
+      autoTimeoutSeconds: 10,
+    };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('sara_user_profile', JSON.stringify(userProfile));
+  }, [userProfile]);
+
+  const updateUserProfile = (patch: Partial<UserProfile>) => {
+    setUserProfile((prev) => ({ ...prev, ...patch }));
+  };
+
+  // 3. Personality Settings
+  const [personalitySettings, setPersonalitySettings] = useState<PersonalitySettings>(() => {
+    const saved = localStorage.getItem('sara_personality_settings');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { }
+    }
+    return {
+      warmth: 95,
+      playfulness: 88,
+      romance: 92,
+      affection: 96,
+      formality: 15,
+      responseLength: 'expressive',
+      emojiFrequency: 'abundant',
+    };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('sara_personality_settings', JSON.stringify(personalitySettings));
+  }, [personalitySettings]);
+
+  const updatePersonalitySettings = (patch: Partial<PersonalitySettings>) => {
+    setPersonalitySettings((prev) => ({ ...prev, ...patch }));
+  };
+
+  // 4. Voice Settings
+  const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>(() => {
+    const saved = localStorage.getItem('sara_voice_settings');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { }
+    }
+    return {
+      voice: 'Zephyr',
+      speed: 1.0,
+      pitch: 1.05,
+      autoSpeak: true,
+      provider: 'gemini-tts',
+    };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('sara_voice_settings', JSON.stringify(voiceSettings));
+  }, [voiceSettings]);
+
+  const updateVoiceSettings = (patch: Partial<VoiceSettings>) => {
+    setVoiceSettings((prev) => ({ ...prev, ...patch }));
+  };
+
+  // 5. Active Avatar
+  const [activeAvatarId, setActiveAvatarId] = useState<string>(() => {
+    return localStorage.getItem('sara_active_avatar') || 'sara-cyberpunk';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('sara_active_avatar', activeAvatarId);
+  }, [activeAvatarId]);
+
+  // 6. Messages
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const saved = localStorage.getItem('sara_chat_history');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { }
+    }
+    return [
+      {
+        id: 'msg_welcome',
+        role: 'model',
+        content: 'শুভ সন্ধ্যা! আমি সারা ❤️ তোমার পার্সোনাল এআই সঙ্গী ও ভার্চুয়াল গার্লফ্রেন্ড। সারাদিন কেমন কাটল তোমার? আমি সবসময় তোমার কথা শুনতে এবং তোমাকে সাহায্য করতে এখানে আছি।',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        emotion: 'caring',
+      },
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('sara_chat_history', JSON.stringify(messages));
+  }, [messages]);
+
+  const addMessage = (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => {
+    const newMsg: ChatMessage = {
+      ...msg,
+      id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    setMessages((prev) => [...prev, newMsg]);
+    return newMsg;
+  };
+
+  const clearMessages = () => {
+    setMessages([
+      {
+        id: `msg_${Date.now()}`,
+        role: 'model',
+        content: 'কথোপকথন রিস্টার্ট করা হয়েছে ❤️ সারা প্রস্তুত!',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        emotion: 'happy',
+      },
+    ]);
+  };
+
+  // 7. Action Proposals
+  const [pendingActions, setPendingActions] = useState<ActionProposal[]>([]);
+
+  // 8. Memories
+  const [memories, setMemories] = useState<MemoryItem[]>(() => {
+    const saved = localStorage.getItem('sara_memories');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { }
+    }
+    return [
+      {
+        id: 'mem_1',
+        category: 'Personal',
+        content: 'ইউজারের নাম Zobaer, ভালোবাসে টেকনোলজি এবং এআই নিয়ে গবেষণা করতে।',
+        createdAt: '2026-10-08',
+        active: true,
+      },
+      {
+        id: 'mem_2',
+        category: 'Preferences',
+        content: 'বাংলা এবং মিষ্টি রোমান্টিক সংলাপে কথা বলতে পছন্দ করে।',
+        createdAt: '2026-10-08',
+        active: true,
+      },
+      {
+        id: 'mem_3',
+        category: 'Projects',
+        content: 'বর্তমান প্রজেক্ট: SARA AI — Next-Gen AI Companion & Voice Assistant.',
+        createdAt: '2026-10-09',
+        active: true,
+      },
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('sara_memories', JSON.stringify(memories));
+  }, [memories]);
+
+  const addMemory = (category: MemoryItem['category'], content: string) => {
+    const newMem: MemoryItem = {
+      id: `mem_${Date.now()}`,
+      category,
+      content,
+      createdAt: new Date().toISOString().split('T')[0],
+      active: true,
+    };
+    setMemories((prev) => [newMem, ...prev]);
+    addActivityLog({
+      title: `New memory saved: [${category}]`,
+      type: 'action',
+      service: 'Memory Unit',
+      status: 'SUCCESS',
+      details: content,
+    });
+  };
+
+  const removeMemory = (id: string) => {
+    setMemories((prev) => prev.filter((m) => m.id !== id));
+  };
+
+  const toggleMemory = (id: string) => {
+    setMemories((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, active: !m.active } : m))
+    );
+  };
+
+  // 9. Automations
+  const [automations, setAutomations] = useState<AutomationItem[]>([
+    {
+      id: 'auto_1',
+      name: 'সকালের ব্রিফিং ও শুভ সকাল',
+      trigger: 'Schedule',
+      schedule: '08:00 AM Daily',
+      action: 'Wake up greeting + Weather report + Todays Agenda',
+      enabled: true,
+      lastRun: 'Today at 08:00 AM',
+    },
+    {
+      id: 'auto_2',
+      name: 'রাতে ঘুমের আগে ভালোবাসার বার্তা',
+      trigger: 'Schedule',
+      schedule: '11:30 PM Daily',
+      action: 'Sweet dreams reminder + Positive affirmation',
+      enabled: true,
+      lastRun: 'Yesterday at 11:30 PM',
+    },
+    {
+      id: 'auto_3',
+      name: 'হেল্থ ও পানি খাওয়ার রিমাইন্ডার',
+      trigger: 'Interval',
+      schedule: 'Every 2 Hours',
+      action: 'Gentle hydration prompt',
+      enabled: false,
+    },
+  ]);
+
+  const toggleAutomation = (id: string) => {
+    setAutomations((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, enabled: !a.enabled } : a))
+    );
+  };
+
+  // 10. Activity Logs
+  const [activityLogs, setActivityLogs] = useState<ActivityItem[]>([
+    {
+      id: 'act_1',
+      title: 'Sara AI Core initialized',
+      type: 'action',
+      service: 'System',
+      status: 'SUCCESS',
+      timestamp: 'Today at 05:30 PM',
+    },
+    {
+      id: 'act_2',
+      title: 'Daily Reward Claimed (+10 Coins)',
+      type: 'reward',
+      service: 'Sara Economy',
+      status: 'SUCCESS',
+      timestamp: 'Today at 05:39 PM',
+    },
+  ]);
+
+  const addActivityLog = (log: Omit<ActivityItem, 'id' | 'timestamp'>) => {
+    const newLog: ActivityItem = {
+      ...log,
+      id: `act_${Date.now()}`,
+      timestamp: `Today at ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+    };
+    setActivityLogs((prev) => [newLog, ...prev]);
+  };
+
+  // 11. Coins & Economy
+  const [coinBalance, setCoinBalance] = useState<number>(() => {
+    const saved = localStorage.getItem('sara_coin_balance');
+    return saved !== null ? parseInt(saved, 10) : 110;
+  });
+
+  const [adsWatchedToday, setAdsWatchedToday] = useState<number>(() => {
+    const saved = localStorage.getItem('sara_ads_watched');
+    return saved !== null ? parseInt(saved, 10) : 5;
+  });
+
+  const [coinTransactions, setCoinTransactions] = useState<CoinTransaction[]>([
+    {
+      id: 'tx_5',
+      title: 'Rewarded ad #5 of 5',
+      amount: 20,
+      type: 'rewarded_ad',
+      timestamp: 'Today, 05:39 PM',
+    },
+    {
+      id: 'tx_4',
+      title: 'Rewarded ad #4 of 5',
+      amount: 20,
+      type: 'rewarded_ad',
+      timestamp: 'Today, 05:38 PM',
+    },
+    {
+      id: 'tx_3',
+      title: 'Rewarded ad #3 of 5',
+      amount: 20,
+      type: 'rewarded_ad',
+      timestamp: 'Today, 05:37 PM',
+    },
+    {
+      id: 'tx_2',
+      title: 'Rewarded ad #2 of 5',
+      amount: 20,
+      type: 'rewarded_ad',
+      timestamp: 'Today, 05:36 PM',
+    },
+    {
+      id: 'tx_1',
+      title: 'Daily reward (streak day 1)',
+      amount: 10,
+      type: 'daily_reward',
+      timestamp: 'Today, 05:35 PM',
+    },
+  ]);
+
+  const [lastClaimDate, setLastClaimDate] = useState<string>(() => {
+    return localStorage.getItem('sara_last_claim_date') || new Date().toDateString();
+  });
+
+  const [passExpiresAt, setPassExpiresAt] = useState<number>(() => {
+    const saved = localStorage.getItem('sara_pass_expiry');
+    // Default pass active 6 hours from launch
+    return saved ? parseInt(saved, 10) : Date.now() + 5.65 * 60 * 60 * 1000;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('sara_coin_balance', coinBalance.toString());
+  }, [coinBalance]);
+
+  useEffect(() => {
+    localStorage.setItem('sara_ads_watched', adsWatchedToday.toString());
+  }, [adsWatchedToday]);
+
+  useEffect(() => {
+    localStorage.setItem('sara_last_claim_date', lastClaimDate);
+  }, [lastClaimDate]);
+
+  useEffect(() => {
+    localStorage.setItem('sara_pass_expiry', passExpiresAt.toString());
+  }, [passExpiresAt]);
+
+  const isDailyRewardClaimed = lastClaimDate === new Date().toDateString();
+  const [dailyRewardCountdown, setDailyRewardCountdown] = useState<string>('06:20:21');
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+      const diff = tomorrow.getTime() - now.getTime();
+      const hours = Math.floor(diff / (1000 * 60 * 60)).toString().padStart(2, '0');
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000).toString().padStart(2, '0');
+      setDailyRewardCountdown(`${hours}:${minutes}:${seconds}`);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const [passRemainingSeconds, setPassRemainingSeconds] = useState<number>(() =>
+    Math.max(0, Math.floor((passExpiresAt - Date.now()) / 1000))
+  );
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const remaining = Math.max(0, Math.floor((passExpiresAt - Date.now()) / 1000));
+      setPassRemainingSeconds(remaining);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [passExpiresAt]);
+
+  const isPassActive = passRemainingSeconds > 0;
+
+  const claimDailyReward = () => {
+    if (isDailyRewardClaimed) return false;
+    setCoinBalance((prev) => prev + 10);
+    setLastClaimDate(new Date().toDateString());
+    const newTx: CoinTransaction = {
+      id: `tx_${Date.now()}`,
+      title: 'Daily reward claimed',
+      amount: 10,
+      type: 'daily_reward',
+      timestamp: 'Just now',
+    };
+    setCoinTransactions((prev) => [newTx, ...prev]);
+    addActivityLog({
+      title: 'Daily Reward (+10 Coins)',
+      type: 'reward',
+      service: 'Sara Economy',
+      status: 'SUCCESS',
+    });
+    return true;
+  };
+
+  const watchRewardedAd = () => {
+    if (adsWatchedToday >= 5) return false;
+    setAdsWatchedToday((prev) => prev + 1);
+    setCoinBalance((prev) => prev + 20);
+    const newTx: CoinTransaction = {
+      id: `tx_${Date.now()}`,
+      title: `Rewarded ad #${adsWatchedToday + 1} of 5`,
+      amount: 20,
+      type: 'rewarded_ad',
+      timestamp: 'Just now',
+    };
+    setCoinTransactions((prev) => [newTx, ...prev]);
+    return true;
+  };
+
+  const activatePass = (hours: number = 6) => {
+    if (coinBalance < 50) return false;
+    setCoinBalance((prev) => prev - 50);
+    const newExpiry = Date.now() + hours * 60 * 60 * 1000;
+    setPassExpiresAt(newExpiry);
+    const newTx: CoinTransaction = {
+      id: `tx_${Date.now()}`,
+      title: `Sara AI Pass (${hours} Hours)`,
+      amount: -50,
+      type: 'pass_purchase',
+      timestamp: 'Just now',
+    };
+    setCoinTransactions((prev) => [newTx, ...prev]);
+    addActivityLog({
+      title: `Sara AI Pass Activated (${hours} Hours)`,
+      type: 'action',
+      service: 'VIP Core',
+      status: 'SUCCESS',
+    });
+    return true;
+  };
+
+  // 12. Text-to-Speech & Lip-Sync Animation Engine
+  const speakText = async (text: string, emotion: EmotionState = 'caring') => {
+    try {
+      stopSpeech();
+      setIsSpeaking(true);
+      setAssistantState('SPEAKING');
+      setCurrentEmotion(emotion);
+
+      // Clean text for speech (strip emojis, symbols, markdown)
+      const speechClean = text
+        .replace(/\[EMOTION:[a-zA-Z]+\]\s*/g, '')
+        .replace(/```[\s\S]*?```/g, '')
+        .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1FA00}-\u{1FAFF}\u{FE00}-\u{FE0F}]/gu, '')
+        .replace(/[*#_`~]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 400);
+
+      if (!speechClean) {
+        setIsSpeaking(false);
+        setAssistantState('IDLE');
+        return;
+      }
+
+      // Detect Bengali text
+      const isBengali = /[\u0980-\u09FF]/.test(speechClean);
+      const styleDesc = isBengali
+        ? 'Sweet, gentle native Bengali female voice speaking fluent, clear, natural Bengali with loving companion cadence'
+        : `Warm, loving, affectionate female AI companion (${emotion})`;
+
+      // Always request high-fidelity audio from /api/tts (Google Bengali TTS or Gemini TTS)
+      try {
+        const response = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: speechClean,
+            voice: voiceSettings.voice || 'Zephyr',
+            style: styleDesc,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.audioDataUrl) {
+            const audio = new Audio(data.audioDataUrl);
+            currentAudioRef.current = audio;
+
+            // Connect Web Audio API Analyser for dynamic lip sync visemes
+            try {
+              const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+              if (AudioContextClass) {
+                const audioCtx = new AudioContextClass();
+                audioContextRef.current = audioCtx;
+                const source = audioCtx.createMediaElementSource(audio);
+                const analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 64;
+                source.connect(analyser);
+                analyser.connect(audioCtx.destination);
+                analyserRef.current = analyser;
+
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                const updateVisemes = () => {
+                  if (!analyserRef.current) return;
+                  analyserRef.current.getByteFrequencyData(dataArray);
+                  // Sample 5 representative frequency bins
+                  const bins = [
+                    dataArray[1] || 15,
+                    dataArray[3] || 30,
+                    dataArray[6] || 50,
+                    dataArray[10] || 35,
+                    dataArray[15] || 20,
+                  ];
+                  setAudioFrequencyData(bins);
+                  animFrameRef.current = requestAnimationFrame(updateVisemes);
+                };
+                updateVisemes();
+              }
+            } catch (err) {
+              console.warn('AudioContext analyser hook fallback:', err);
+            }
+
+            audio.onended = () => {
+              stopSpeech();
+            };
+            audio.onerror = () => {
+              fallbackBrowserSpeech(speechClean);
+            };
+
+            await audio.play();
+            return;
+          }
+        }
+      } catch (fetchErr) {
+        console.warn('Server TTS fetch warning:', fetchErr);
+      }
+
+      // Fallback to browser synthesis
+      fallbackBrowserSpeech(speechClean);
+    } catch (e) {
+      console.error('Speech synthesis error:', e);
+      fallbackBrowserSpeech(text);
+    }
+  };
+
+  const fallbackBrowserSpeech = (text: string) => {
+    if (!('speechSynthesis' in window)) {
+      setIsSpeaking(false);
+      setAssistantState('IDLE');
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = voiceSettings.speed || 1.0;
+    utterance.pitch = voiceSettings.pitch || 1.05;
+
+    const isBengali = /[\u0980-\u09FF]/.test(text);
+    const voices = window.speechSynthesis.getVoices();
+
+    if (isBengali) {
+      // Find authentic Bengali voice first
+      const bengaliVoice = voices.find(
+        (v) =>
+          v.lang.startsWith('bn') ||
+          v.lang.includes('bn-') ||
+          v.lang.includes('bn_') ||
+          v.name.toLowerCase().includes('bangla') ||
+          v.name.toLowerCase().includes('bengali')
+      );
+      if (bengaliVoice) {
+        utterance.voice = bengaliVoice;
+      }
+      utterance.lang = 'bn-BD';
+    } else {
+      // Pick pleasant voice for other languages
+      const preferredVoice = voices.find(
+        (v) =>
+          v.lang.includes('hi') ||
+          v.name.includes('Female') ||
+          v.name.includes('Natural') ||
+          v.name.includes('Google')
+      );
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
+    }
+
+    // Simulate frequency data while browser speaks
+    const interval = setInterval(() => {
+      setAudioFrequencyData([
+        Math.floor(Math.random() * 60 + 20),
+        Math.floor(Math.random() * 80 + 30),
+        Math.floor(Math.random() * 70 + 25),
+        Math.floor(Math.random() * 50 + 15),
+        Math.floor(Math.random() * 40 + 10),
+      ]);
+    }, 120);
+
+    utterance.onend = () => {
+      clearInterval(interval);
+      stopSpeech();
+    };
+    utterance.onerror = () => {
+      clearInterval(interval);
+      stopSpeech();
+    };
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const stopSpeech = () => {
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsSpeaking(false);
+    setAudioFrequencyData([5, 10, 15, 8, 5]);
+    setAssistantState('IDLE');
+  };
+
+  // 13. Send Chat Message (Coordinates Chat, High Thinking, Maps Grounding)
+  const sendMessage = async (
+    content: string,
+    options?: { model?: string; isThinking?: boolean; useMaps?: boolean }
+  ) => {
+    if (!content.trim()) return;
+
+    // Add user message
+    const userMsg = addMessage({
+      role: 'user',
+      content,
+    });
+
+    setIsLoading(true);
+    setAssistantState('THINKING');
+
+    try {
+      // High Thinking Mode request
+      if (options?.isThinking) {
+        const thinkRes = await fetch('/api/think', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: content,
+            systemInstruction: `You are Sara, an intelligent companion performing High-Reasoning analysis for ${userProfile.name}. Be detailed, empathetic, and structurally clear.`,
+          }),
+        });
+
+        const data = await thinkRes.json();
+        if (data.success) {
+          addMessage({
+            role: 'model',
+            content: data.text,
+            emotion: 'thinking',
+            modelUsed: 'gemini-3.1-pro-preview',
+            isThinking: true,
+            thoughtSteps: [
+              'Deconstructing problem premises and contextual background',
+              'Evaluating multi-domain logic, constraints & safety parameters',
+              'Formulating optimal synthesis with step-by-step clarity',
+            ],
+          });
+          setCurrentEmotion('thinking');
+          setAssistantState('IDLE');
+          if (voiceSettings.autoSpeak) {
+            speakText(data.text.slice(0, 180), 'thinking');
+          }
+          return;
+        }
+      }
+
+      // Maps Grounding request
+      if (options?.useMaps || /nearby|location|restaurant|cafe|hotel|coffee|where is|রাস্তা|ম্যাপ/i.test(content)) {
+        let lat: number | undefined;
+        let lng: number | undefined;
+        try {
+          if ('geolocation' in navigator) {
+            const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000 });
+            });
+            lat = pos.coords.latitude;
+            lng = pos.coords.longitude;
+          }
+        } catch (e) {
+          // Geolocation unavailable or denied, proceed without exact coords
+        }
+
+        const mapsRes = await fetch('/api/maps-grounding', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: content,
+            latitude: lat,
+            longitude: lng,
+          }),
+        });
+
+        const mapsData = await mapsRes.json();
+        if (mapsData.success) {
+          addMessage({
+            role: 'model',
+            content: mapsData.text,
+            emotion: 'caring',
+            modelUsed: 'gemini-3.5-flash (Maps Grounded)',
+            mapsLinks: mapsData.mapsLinks || [],
+          });
+          setCurrentEmotion('caring');
+          setAssistantState('IDLE');
+          if (voiceSettings.autoSpeak) {
+            speakText(mapsData.text.slice(0, 200), 'caring');
+          }
+          return;
+        }
+      }
+
+      // Standard Chat request
+      const activeMemories = memories.filter((m) => m.active);
+      const chatRes = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [...messages, userMsg].map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+          personality: userProfile.personality,
+          personalitySettings,
+          userLanguage: userProfile.language,
+          userName: userProfile.name,
+          memories: activeMemories,
+          model: options?.model || 'gemini-3.5-flash',
+        }),
+      });
+
+      const data = await chatRes.json();
+      if (data.success) {
+        const receivedEmotion: EmotionState = data.emotion || 'caring';
+        setCurrentEmotion(receivedEmotion);
+
+        let proposal: ActionProposal | undefined = undefined;
+        if (data.actionProposal) {
+          proposal = {
+            id: `act_prop_${Date.now()}`,
+            action: data.actionProposal.action || 'system_action',
+            service: data.actionProposal.service || 'External Service',
+            title: data.actionProposal.title || 'Action Request',
+            risk: data.actionProposal.risk || 'medium',
+            details: data.actionProposal.details || {},
+            status: 'PENDING',
+          };
+          setPendingActions((prev) => [proposal!, ...prev]);
+          setAssistantState('WAITING_FOR_APPROVAL');
+        } else {
+          setAssistantState('IDLE');
+        }
+
+        addMessage({
+          role: 'model',
+          content: data.text,
+          emotion: receivedEmotion,
+          modelUsed: options?.model || 'gemini-3.5-flash',
+          actionProposal: proposal,
+        });
+
+        if (voiceSettings.autoSpeak) {
+          speakText(data.text, receivedEmotion);
+        }
+      } else {
+        throw new Error(data.error || 'Failed to fetch response');
+      }
+    } catch (err: any) {
+      console.error('Chat send error:', err);
+      setAssistantState('ERROR');
+      addMessage({
+        role: 'model',
+        content: `সারার সাথে কানেক্ট করতে সমস্যা হচ্ছে প্রিয় 🥺 (${err?.message || 'Connection Error'})। দয়া করে আবার চেষ্টা কর।`,
+        emotion: 'sad',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 14. Action Execution & Approval
+  const approveAction = async (actionId: string) => {
+    const proposal = pendingActions.find((a) => a.id === actionId);
+    if (!proposal) return;
+
+    setAssistantState('EXECUTING');
+    try {
+      const res = await fetch('/api/action-execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actionId: proposal.id,
+          action: proposal.action,
+          service: proposal.service,
+          details: proposal.details,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        // Update proposal in pending and in messages
+        setPendingActions((prev) =>
+          prev.map((a) =>
+            a.id === actionId
+              ? { ...a, status: 'EXECUTED', executedAt: data.executedAt, resultMessage: data.message }
+              : a
+          )
+        );
+
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.actionProposal?.id === actionId
+              ? {
+                  ...m,
+                  actionProposal: {
+                    ...m.actionProposal,
+                    status: 'EXECUTED',
+                    executedAt: data.executedAt,
+                    resultMessage: data.message,
+                  },
+                }
+              : m
+          )
+        );
+
+        addActivityLog({
+          title: `Action executed: ${proposal.title}`,
+          type: 'action',
+          service: proposal.service,
+          status: 'SUCCESS',
+          details: data.message,
+        });
+
+        const confirmText = `Done ❤️ আমি কাজটি সম্পূর্ণ করেছি: ${data.message}`;
+        addMessage({
+          role: 'model',
+          content: confirmText,
+          emotion: 'happy',
+        });
+        speakText(confirmText, 'happy');
+      } else {
+        throw new Error(data.error || 'Execution failed');
+      }
+    } catch (e: any) {
+      addActivityLog({
+        title: `Action failed: ${proposal.title}`,
+        type: 'action',
+        service: proposal.service,
+        status: 'FAILED',
+        details: e.message,
+      });
+
+      const failText = `আমি অ্যাকশনটি সম্পন্ন করতে পারিনি বাবু 🥺 (${e.message})। চাইলে আবার চেষ্টা করতে পারি।`;
+      addMessage({
+        role: 'model',
+        content: failText,
+        emotion: 'sad',
+      });
+      speakText(failText, 'sad');
+    } finally {
+      setAssistantState('IDLE');
+    }
+  };
+
+  const rejectAction = (actionId: string) => {
+    setPendingActions((prev) =>
+      prev.map((a) => (a.id === actionId ? { ...a, status: 'REJECTED' } : a))
+    );
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.actionProposal?.id === actionId
+          ? { ...m, actionProposal: { ...m.actionProposal, status: 'REJECTED' } }
+          : m
+      )
+    );
+    const cancelText = 'ঠিক আছে প্রিয়, তোমার নির্দেশে অ্যাকশনটি বাতিল করা হলো। ❤️';
+    addMessage({
+      role: 'model',
+      content: cancelText,
+      emotion: 'caring',
+    });
+    setAssistantState('IDLE');
+  };
+
+  // Mock system hardware diagnostics (realistic 98% cpu, operational)
+  const [cpuPower] = useState<number>(98);
+  const [networkConnected] = useState<boolean>(true);
+  const [systemOperational] = useState<boolean>(true);
+
+  return (
+    <SaraContext.Provider
+      value={{
+        assistantState,
+        setAssistantState,
+        currentEmotion,
+        setCurrentEmotion,
+        isSpeaking,
+        audioFrequencyData,
+        userProfile,
+        updateUserProfile,
+        personalitySettings,
+        updatePersonalitySettings,
+        voiceSettings,
+        updateVoiceSettings,
+        activeAvatarId,
+        setActiveAvatarId,
+        messages,
+        addMessage,
+        sendMessage,
+        clearMessages,
+        isLoading,
+        speakText,
+        stopSpeech,
+        pendingActions,
+        approveAction,
+        rejectAction,
+        memories,
+        addMemory,
+        removeMemory,
+        toggleMemory,
+        automations,
+        toggleAutomation,
+        activityLogs,
+        addActivityLog,
+        coinBalance,
+        coinTransactions,
+        claimDailyReward,
+        isDailyRewardClaimed,
+        dailyRewardCountdown,
+        isPassActive,
+        passRemainingSeconds,
+        activatePass,
+        watchRewardedAd,
+        adsWatchedToday,
+        cpuPower,
+        networkConnected,
+        systemOperational,
+      }}
+    >
+      {children}
+    </SaraContext.Provider>
+  );
+};
+
+export const useSara = () => {
+  const context = useContext(SaraContext);
+  if (!context) {
+    throw new Error('useSara must be used within a SaraProvider');
+  }
+  return context;
+};

@@ -1,0 +1,32 @@
+{
+  "id": "/",
+  "name": "SARA AI — Virtual Companion & Voice Assistant",
+  "short_name": "SARA AI",
+  "description": "Your AI. Your Voice. Your Companion. Emotionally expressive AI companion with live talking avatar, voice conversation, science intelligence, and permission-controlled actions.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#070714",
+  "background_color": "#05050f",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
