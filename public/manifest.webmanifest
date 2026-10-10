@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "SARA AI — Virtual Companion & Voice Assistant",
-  "short_name": "SARA AI",
-  "description": "Your AI. Your Voice. Your Companion. Emotionally expressive AI companion with live talking avatar, voice conversation, real AI task automations, smart alarms, and permission-controlled actions.",
+  "name": "SaraAI — Your AI Voice Companion & Girlfriend | সারা এআই",
+  "short_name": "SaraAI",
+  "description": "SaraAI (সারা এআই) is your affectionate virtual AI companion & girlfriend with live talking 3D avatar, sweet Bengali voice chat, real AI task automations, and smart alarms.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
