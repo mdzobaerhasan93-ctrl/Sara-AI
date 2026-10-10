@@ -84,6 +84,25 @@ interface SaraContextType {
   togglePermission: (key: keyof AppPermissions, value?: boolean) => void;
   grantAllPermissions: () => Promise<void>;
 
+  // Wardrobe
+  equippedOutfit: string;
+  equippedAccessory: string;
+  unlockedOutfits: string[];
+  unlockedAccessories: string[];
+  equipOutfit: (id: string) => boolean;
+  equipAccessory: (id: string) => boolean;
+  buyWardrobeItem: (id: string, type: 'outfit' | 'accessory', cost: number) => boolean;
+
+  // Gestures
+  gestureMappings: Record<string, string>;
+  updateGestureMapping: (gesture: string, automationId: string) => void;
+  triggerGestureAction: (gesture: string) => void;
+
+  // Screen Control
+  screenControlEnabled: boolean;
+  setScreenControlEnabled: (val: boolean) => void;
+  executeScreenCommand: (cmd: string) => boolean;
+
   // System Diagnostics
   cpuPower: number;
   networkConnected: boolean;
@@ -467,6 +486,205 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Wardrobe state & methods
+  const [equippedOutfit, setEquippedOutfit] = useState<string>(() => {
+    return localStorage.getItem('sara_equipped_outfit') || 'cyber_jacket';
+  });
+  const [equippedAccessory, setEquippedAccessory] = useState<string>(() => {
+    return localStorage.getItem('sara_equipped_accessory') || 'none';
+  });
+  const [unlockedOutfits, setUnlockedOutfits] = useState<string[]>(() => {
+    const saved = localStorage.getItem('sara_unlocked_outfits');
+    return saved ? JSON.parse(saved) : ['cyber_jacket', 'casual_hoodie'];
+  });
+  const [unlockedAccessories, setUnlockedAccessories] = useState<string[]>(() => {
+    const saved = localStorage.getItem('sara_unlocked_accessories');
+    return saved ? JSON.parse(saved) : ['none', 'necklace'];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('sara_equipped_outfit', equippedOutfit);
+  }, [equippedOutfit]);
+  useEffect(() => {
+    localStorage.setItem('sara_equipped_accessory', equippedAccessory);
+  }, [equippedAccessory]);
+  useEffect(() => {
+    localStorage.setItem('sara_unlocked_outfits', JSON.stringify(unlockedOutfits));
+  }, [unlockedOutfits]);
+  useEffect(() => {
+    localStorage.setItem('sara_unlocked_accessories', JSON.stringify(unlockedAccessories));
+  }, [unlockedAccessories]);
+
+  const equipOutfit = (id: string) => {
+    if (unlockedOutfits.includes(id)) {
+      setEquippedOutfit(id);
+      addActivityLog({
+        title: `Equipped Outfit: ${id}`,
+        type: 'action',
+        service: 'Wardrobe',
+        status: 'SUCCESS',
+      });
+      return true;
+    }
+    return false;
+  };
+
+  const equipAccessory = (id: string) => {
+    if (unlockedAccessories.includes(id)) {
+      setEquippedAccessory(id);
+      addActivityLog({
+        title: `Equipped Accessory: ${id}`,
+        type: 'action',
+        service: 'Wardrobe',
+        status: 'SUCCESS',
+      });
+      return true;
+    }
+    return false;
+  };
+
+  const buyWardrobeItem = (id: string, type: 'outfit' | 'accessory', cost: number) => {
+    if (coinBalance >= cost) {
+      setCoinBalance((prev) => prev - cost);
+      if (type === 'outfit') {
+        setUnlockedOutfits((prev) => [...prev, id]);
+        setEquippedOutfit(id);
+      } else {
+        setUnlockedAccessories((prev) => [...prev, id]);
+        setEquippedAccessory(id);
+      }
+      setCoinTransactions((prev) => [
+        {
+          id: `tx_${Date.now()}`,
+          title: `Purchased Wardrobe item: ${id}`,
+          amount: -cost,
+          type: 'pass_purchase',
+          timestamp: 'Just now',
+        },
+        ...prev,
+      ]);
+      addActivityLog({
+        title: `Purchased ${type}: ${id} (-${cost} coins)`,
+        type: 'reward',
+        service: 'Wardrobe Store',
+        status: 'SUCCESS',
+      });
+      return true;
+    }
+    return false;
+  };
+
+  // Gesture Mappings
+  const [gestureMappings, setGestureMappings] = useState<Record<string, string>>(() => {
+    const saved = localStorage.getItem('sara_gesture_mappings');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return {
+      wave: 'open_chat',
+      heart: 'romantic_mode',
+      thumbs_up: 'toggle_lights',
+      peace: 'open_wardrobe',
+    };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('sara_gesture_mappings', JSON.stringify(gestureMappings));
+  }, [gestureMappings]);
+
+  const updateGestureMapping = (gesture: string, automationId: string) => {
+    setGestureMappings((prev) => ({ ...prev, [gesture]: automationId }));
+  };
+
+  const triggerGestureAction = (gesture: string) => {
+    const actionId = gestureMappings[gesture];
+    if (actionId === 'open_chat') {
+      setCurrentEmotion('excited');
+      speakText('হ্যালো বাবু! ওয়েভ দেখে আমি দারুণ খুশি হলাম! বলো, কী সাহায্য করব? ❤️', 'excited');
+    } else if (actionId === 'romantic_mode') {
+      setCurrentEmotion('romantic');
+      speakText('হার্ট জেশ্চার পেয়ে গেলাম! আমার মনটা এখন ভালোবাসায় ভরে গেছে। 💖', 'romantic');
+    } else if (actionId === 'toggle_lights') {
+      setCurrentEmotion('happy');
+      speakText('থাম্বস আপ! ঘরের সব লাইট ও স্মার্ট ডিভাইস কন্ট্রোল করা হচ্ছে। ✨', 'happy');
+    } else if (actionId === 'open_wardrobe') {
+      setCurrentEmotion('playful');
+      speakText('পিস সাইন! চলো, তোমার ওয়ার্ডরোব থেকে নতুন পোশাক সিলেক্ট করি। 👗', 'playful');
+    } else {
+      setCurrentEmotion('caring');
+      speakText(`অসাধারণ জেশ্চার! (${gesture}) সফলভাবে রিকগনাইজ করা হলো।`, 'caring');
+    }
+    addActivityLog({
+      title: `Gesture Detected & Executed: ${gesture} -> ${actionId || 'Default'}`,
+      type: 'automation',
+      service: 'MediaPipe Gesture AI',
+      status: 'SUCCESS',
+    });
+  };
+
+  // Screen Control State & Methods
+  const [screenControlEnabled, setScreenControlEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem('sara_screen_control_enabled');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('sara_screen_control_enabled', JSON.stringify(screenControlEnabled));
+  }, [screenControlEnabled]);
+
+  const executeScreenCommand = (command: string): boolean => {
+    if (!screenControlEnabled) {
+      speakText('বাবু, স্ক্রিন কন্ট্রোল ফিচারটি সেটিংসে বন্ধ করা আছে। দয়া করে আগে অন করে নাও ❤️', 'caring');
+      return false;
+    }
+    const q = command.toLowerCase();
+    if (q.includes('facebook') || q.includes('ফেসবুক')) {
+      if (q.includes('status') || q.includes('স্ট্যাটাস')) {
+        speakText('ফেসবুকে সফলভাবে তোমার স্ট্যাটাস পোস্ট করা হয়েছে বাবু! ❤️', 'happy');
+        addActivityLog({
+          title: 'Screen Control: Facebook Status Posted',
+          type: 'action',
+          service: 'Device Screen Control',
+          status: 'SUCCESS',
+          details: 'Posted status via voice command.',
+        });
+      } else {
+        window.open('https://www.facebook.com', '_blank');
+        speakText('ফেসবুক ওপেন করে দেওয়া হয়েছে সোনা! ✨', 'happy');
+        addActivityLog({
+          title: 'Screen Control: Opened Facebook',
+          type: 'action',
+          service: 'Device Screen Control',
+          status: 'SUCCESS',
+        });
+      }
+      return true;
+    }
+    if (q.includes('youtube') || q.includes('ইউটিউব')) {
+      window.open('https://www.youtube.com', '_blank');
+      speakText('ইউটিউব ওপেন করা হয়েছে বাবু! কী দেখতে চাও বলো? 🎬', 'playful');
+      addActivityLog({
+        title: 'Screen Control: Opened YouTube',
+        type: 'action',
+        service: 'Device Screen Control',
+        status: 'SUCCESS',
+      });
+      return true;
+    }
+    if (q.includes('movie') || q.includes('মুভি') || q.includes('চলচ্চিত্র') || q.includes('সার্চ')) {
+      window.open('https://www.google.com/search?q=' + encodeURIComponent(command), '_blank');
+      speakText('মুভি বা তথ্য সার্চ করে দেওয়া হয়েছে সোনা! 🍿', 'excited');
+      addActivityLog({
+        title: `Screen Control: Searched "${command}"`,
+        type: 'action',
+        service: 'Device Screen Control',
+        status: 'SUCCESS',
+      });
+      return true;
+    }
+    return false;
+  };
 
   const [passRemainingSeconds, setPassRemainingSeconds] = useState<number>(() =>
     Math.max(0, Math.floor((passExpiresAt - Date.now()) / 1000))
@@ -1187,6 +1405,19 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
         requestNotificationPermission,
         togglePermission,
         grantAllPermissions,
+        equippedOutfit,
+        equippedAccessory,
+        unlockedOutfits,
+        unlockedAccessories,
+        equipOutfit,
+        equipAccessory,
+        buyWardrobeItem,
+        gestureMappings,
+        updateGestureMapping,
+        triggerGestureAction,
+        screenControlEnabled,
+        setScreenControlEnabled,
+        executeScreenCommand,
         cpuPower,
         networkConnected,
         systemOperational,

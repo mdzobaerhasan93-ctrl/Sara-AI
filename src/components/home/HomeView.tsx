@@ -20,6 +20,8 @@ import {
   Play,
   Activity,
   Rotate3d,
+  Camera,
+  Zap,
 } from 'lucide-react';
 import { useSara } from '../../context/SaraContext';
 import { AICoreOrb } from '../core/AICoreOrb';
@@ -27,6 +29,7 @@ import { LiveTalkingAvatar } from '../avatar/LiveTalkingAvatar';
 import { TabType } from '../navigation/BottomNavigation';
 import { MoodHabitTracker } from './MoodHabitTracker';
 import { WakeWordIndicator } from '../voice/WakeWordIndicator';
+import { GestureRecognitionModal } from '../gesture/GestureRecognitionModal';
 
 interface HomeViewProps {
   onNavigate: (tab: TabType) => void;
@@ -50,6 +53,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
   } = useSara();
 
   const [coreViewMode, setCoreViewMode] = useState<'3d' | 'orb'>('3d');
+  const [showGestureModal, setShowGestureModal] = useState<boolean>(false);
 
   const handleTimeoutChange = (delta: number) => {
     const current = userProfile.autoTimeoutSeconds || 10;
@@ -145,6 +149,46 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
               </div>
             </div>
             <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+          </button>
+
+          {/* Module 5: Gestures AI Camera */}
+          <button
+            onClick={() => setShowGestureModal(true)}
+            className="p-2.5 rounded-2xl glass-card border border-pink-500/20 hover:border-pink-500/40 flex items-center justify-between transition-all group active:scale-95 text-left bg-gradient-to-r from-pink-950/40 to-purple-950/30"
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-pink-500/20 flex items-center justify-center text-pink-400 group-hover:scale-105">
+                <Camera className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-100">Gestures</p>
+                <div className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-pink-400 animate-ping" />
+                  <span className="text-[10px] text-pink-300">MediaPipe AI</span>
+                </div>
+              </div>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-pink-400" />
+          </button>
+
+          {/* Module 6: Automations */}
+          <button
+            onClick={() => onNavigate('automations' as any)}
+            className="p-2.5 rounded-2xl glass-card border border-pink-500/20 hover:border-pink-500/40 flex items-center justify-between transition-all group active:scale-95 text-left bg-gradient-to-r from-purple-950/40 to-pink-950/30"
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-105">
+                <Zap className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-100">Automations</p>
+                <div className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  <span className="text-[10px] text-amber-300">Active</span>
+                </div>
+              </div>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
           </button>
         </div>
 
@@ -518,6 +562,13 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
           </svg>
         </div>
       </div>
+
+      {/* Gesture Recognition Modal */}
+      <GestureRecognitionModal
+        isOpen={showGestureModal}
+        onClose={() => setShowGestureModal(false)}
+      />
     </div>
   );
 };
+

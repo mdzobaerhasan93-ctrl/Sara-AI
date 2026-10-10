@@ -28,6 +28,8 @@ import {
   X,
 } from 'lucide-react';
 import { PersonalityPreset } from '../../types';
+import { GestureMapView } from './GestureMapView';
+import { AutomationsView } from '../automations/AutomationsView';
 
 export const SettingsView: React.FC = () => {
   const {
@@ -48,9 +50,11 @@ export const SettingsView: React.FC = () => {
     togglePermission,
     grantAllPermissions,
     speakText,
+    screenControlEnabled,
+    setScreenControlEnabled,
   } = useSara();
 
-  const [activeTab, setActiveTab] = useState<'account' | 'perms' | 'controls' | 'api' | 'personality'>('account');
+  const [activeTab, setActiveTab] = useState<'account' | 'perms' | 'controls' | 'api' | 'personality' | 'gesture' | 'automations'>('account');
   const [memorySearch, setMemorySearch] = useState<string>('');
   const [showAddMemoryModal, setShowAddMemoryModal] = useState<boolean>(false);
   const [newMemoryCategory, setNewMemoryCategory] = useState<any>('Personal');
@@ -145,7 +149,37 @@ export const SettingsView: React.FC = () => {
             <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-pink-500 rounded-full" />
           )}
         </button>
+
+        <button
+          onClick={() => setActiveTab('gesture')}
+          className={`py-2 px-3 text-xs font-bold tracking-wider uppercase transition-all relative ${
+            activeTab === 'gesture' ? 'text-pink-400' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          GESTURE
+          {activeTab === 'gesture' && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-pink-500 rounded-full" />
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('automations')}
+          className={`py-2 px-3 text-xs font-bold tracking-wider uppercase transition-all relative ${
+            activeTab === 'automations' ? 'text-pink-400' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          AUTOMATIONS
+          {activeTab === 'automations' && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-pink-500 rounded-full" />
+          )}
+        </button>
       </div>
+
+      {/* GESTURE MAP TAB */}
+      {activeTab === 'gesture' && <GestureMapView />}
+
+      {/* AUTOMATIONS TAB */}
+      {activeTab === 'automations' && <AutomationsView />}
 
       {/* 1. ACCOUNT TAB (screenshot #16) */}
       {activeTab === 'account' && (
@@ -660,6 +694,46 @@ export const SettingsView: React.FC = () => {
                 <div
                   className={`w-5 h-5 rounded-full bg-white transition-transform ${
                     permissions.floatingOverlay ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* 8. Device Screen Control (স্ক্রিন কন্ট্রোল) */}
+            <div className="p-3.5 rounded-2xl glass-card border border-pink-500/30 bg-gradient-to-r from-pink-950/30 to-purple-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-pink-500/20 flex items-center justify-center text-pink-400 shrink-0 mt-0.5">
+                  <Sparkles className="w-4 h-4 animate-spin" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-bold text-slate-100">Device Screen Control (ডিভাইস স্ক্রিন কন্ট্রোল)</p>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
+                        screenControlEnabled
+                          ? 'bg-emerald-950/80 border-emerald-500/40 text-emerald-400'
+                          : 'bg-slate-800 border-slate-700 text-slate-400'
+                      }`}
+                    >
+                      {screenControlEnabled ? 'সক্রিয় (ACTIVE)' : 'বন্ধ (OFF)'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 mt-0.5">
+                    মুখে বলে ফেসবুক, ইউটিউব ওপেন করা, মুভি সার্চ বা স্ট্যাটাস পোস্ট করার অনুমতি।
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setScreenControlEnabled(!screenControlEnabled)}
+                className={`w-11 h-6 rounded-full transition-colors relative p-0.5 self-end sm:self-center ${
+                  screenControlEnabled ? 'bg-pink-600' : 'bg-slate-700'
+                }`}
+                aria-label="Toggle Screen Control"
+              >
+                <div
+                  className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                    screenControlEnabled ? 'translate-x-5' : 'translate-x-0'
                   }`}
                 />
               </button>

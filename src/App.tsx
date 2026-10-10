@@ -16,6 +16,7 @@ import { VoiceCompanionModal } from './components/voice/VoiceCompanionModal';
 import { WakeWordIndicator } from './components/voice/WakeWordIndicator';
 import { useWakeWord } from './hooks/useWakeWord';
 import { Download, Sparkles } from 'lucide-react';
+import { FloatingScreenControlOrb } from './components/home/FloatingScreenControlOrb';
 
 const MainLayout: React.FC = () => {
   const { userProfile, speakText } = useSara();
@@ -174,6 +175,9 @@ const MainLayout: React.FC = () => {
           isOpen={isVoiceOpen}
           onClose={() => setIsVoiceOpen(false)}
         />
+
+        {/* Floating Screen Control Background Orb */}
+        <FloatingScreenControlOrb onOpenVoice={() => setIsVoiceOpen(true)} />
       </div>
     </div>
   );

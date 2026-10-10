@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, CloudSun, Clock, Volume2, VolumeX, X, Check } from 'lucide-react';
+import { Bell, CloudSun, Clock, Volume2, VolumeX, X, Check, LogIn } from 'lucide-react';
 import { useSara } from '../../context/SaraContext';
+import { AuthModal } from '../auth/AuthModal';
 
 interface HeaderProps {
   onOpenNotifications?: () => void;
@@ -16,6 +17,7 @@ export const Header: React.FC<HeaderProps> = () => {
     stopSpeech,
   } = useSara();
   const [showNotificationModal, setShowNotificationModal] = useState<boolean>(false);
+  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
 
   const [liveTemp, setLiveTemp] = useState<number | null>(null);
   const [browserTimezone] = useState<string>(() => {
@@ -53,7 +55,6 @@ export const Header: React.FC<HeaderProps> = () => {
     fetchWeather();
   }, []);
 
-  // Dynamic greeting based on current hour
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 5) return { text: 'Good Night 🌙', color: 'text-indigo-400' };
@@ -86,6 +87,15 @@ export const Header: React.FC<HeaderProps> = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Login / Signup Button */}
+          <button
+            onClick={() => setShowAuthModal(true)}
+            className="px-3 py-2 rounded-full glass-card border border-pink-500/30 flex items-center gap-1.5 text-xs font-bold text-pink-300 hover:text-white hover:bg-pink-600/20 active:scale-95 transition-all shadow-sm"
+          >
+            <LogIn className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Login / Sign Up</span>
+          </button>
+
           {/* Mute/Unmute audio button */}
           <button
             onClick={() => {
@@ -117,7 +127,7 @@ export const Header: React.FC<HeaderProps> = () => {
         </div>
       </header>
 
-      {/* Subheader Real Weather & Timezone bar from screenshot #9 */}
+      {/* Subheader Real Weather & Timezone bar */}
       <div className="px-4 py-1 flex items-center justify-between text-xs text-slate-400 border-b border-pink-500/10 mb-3">
         <button
           onClick={fetchWeather}
@@ -130,63 +140,47 @@ export const Header: React.FC<HeaderProps> = () => {
             {liveTemp !== null ? `${liveTemp}°C` : 'Fetching...'}
           </span>
         </button>
+
         <div className="flex items-center gap-1.5">
           <Clock className="w-3.5 h-3.5 text-pink-400" />
-          <span>TIMEZONE</span>
-          <span className="font-semibold text-pink-400 font-mono truncate max-w-[150px]">
-            {browserTimezone}
-          </span>
+          <span className="font-mono text-slate-300">{browserTimezone}</span>
         </div>
       </div>
 
-      {/* Notification Modal */}
+      {/* Notifications Modal */}
       {showNotificationModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-sm rounded-2xl glass-card-pink border border-pink-500/40 p-5 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between pb-3 border-b border-pink-500/20">
-              <div className="flex items-center gap-2">
-                <Bell className="w-5 h-5 text-pink-400" />
-                <h3 className="font-bold text-slate-100">Sara Notifications</h3>
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
+          <div className="w-full max-w-md rounded-3xl glass-card border border-pink-500/40 p-5 space-y-4 shadow-[0_0_30px_rgba(255,46,147,0.3)]">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                <Bell className="w-4 h-4 text-pink-400" />
+                <span>Activity & System Notifications</span>
+              </h3>
               <button
                 onClick={() => setShowNotificationModal(false)}
-                className="text-slate-400 hover:text-white p-1"
+                className="w-8 h-8 rounded-full bg-slate-800 text-slate-300 hover:bg-slate-700 flex items-center justify-center"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="py-3 max-h-64 overflow-y-auto space-y-2">
-              {activityLogs.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-4">No new notifications</p>
-              ) : (
-                activityLogs.map((log) => (
-                  <div
-                    key={log.id}
-                    className="p-2.5 rounded-xl bg-slate-900/60 border border-pink-500/15 flex items-start gap-2.5 text-xs"
-                  >
-                    <span className="w-2 h-2 rounded-full bg-pink-500 shrink-0 mt-1" />
-                    <div className="flex-1">
-                      <p className="font-medium text-slate-200">{log.title}</p>
-                      {log.details && (
-                        <p className="text-slate-400 text-[11px] mt-0.5 line-clamp-1">{log.details}</p>
-                      )}
-                      <p className="text-[10px] text-slate-500 mt-1 font-mono">{log.timestamp}</p>
-                    </div>
+            <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+              {activityLogs.slice(0, 10).map((log) => (
+                <div key={log.id} className="p-3 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-start gap-3 text-xs">
+                  <div className="w-2 h-2 rounded-full bg-pink-500 mt-1.5 shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-bold text-slate-200">{log.title}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">{log.timestamp} • {log.service}</p>
                   </div>
-                ))
-              )}
+                </div>
+              ))}
             </div>
-
-            <button
-              onClick={() => setShowNotificationModal(false)}
-              className="w-full mt-2 py-2 rounded-xl bg-pink-600 hover:bg-pink-500 text-white font-medium text-sm transition-colors"
-            >
-              Close
-            </button>
           </div>
         </div>
       )}
+
+      {/* Auth Modal */}
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </>
   );
 };

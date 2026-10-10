@@ -37,6 +37,7 @@ export const VoiceCompanionModal: React.FC<VoiceCompanionModalProps> = ({
     pendingActions,
     approveAction,
     rejectAction,
+    executeScreenCommand,
   } = useSara();
 
   const [transcript, setTranscript] = useState<string>('');
@@ -152,6 +153,12 @@ export const VoiceCompanionModal: React.FC<VoiceCompanionModalProps> = ({
       setTimeout(() => {
         onClose();
       }, 2500);
+      return;
+    }
+
+    // Check screen control commands
+    const screenExecuted = executeScreenCommand(userText);
+    if (screenExecuted) {
       return;
     }
 
