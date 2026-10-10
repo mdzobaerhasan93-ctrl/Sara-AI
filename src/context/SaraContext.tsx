@@ -438,6 +438,43 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Background Routine & Automation Scheduler
+  useEffect(() => {
+    const checkSchedule = () => {
+      const now = new Date();
+      const currentHours = now.getHours();
+      const currentMinutes = now.getMinutes();
+      const isAm = currentHours < 12;
+      const formattedHour = (currentHours % 12 || 12).toString().padStart(2, '0');
+      const formattedMinute = currentMinutes.toString().padStart(2, '0');
+      const ampm = isAm ? 'AM' : 'PM';
+      const currentTimeStr = `${formattedHour}:${formattedMinute} ${ampm}`;
+
+      automations.forEach((auto) => {
+        if (!auto.enabled) return;
+
+        const timeMatch = auto.schedule.toUpperCase().includes(currentTimeStr);
+        if (timeMatch) {
+          const lastRunKey = `sara_last_auto_run_${auto.id}_${now.toDateString()}_${currentTimeStr}`;
+          if (!localStorage.getItem(lastRunKey)) {
+            localStorage.setItem(lastRunKey, 'true');
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+              navigator.serviceWorker.controller.postMessage({
+                type: 'SHOW_ALARM_NOTIFICATION',
+                title: `⏰ ${auto.name} (SARA AI)`,
+                body: auto.action,
+              });
+            }
+            runAutomation(auto.id);
+          }
+        }
+      });
+    };
+
+    const interval = setInterval(checkSchedule, 20000);
+    return () => clearInterval(interval);
+  }, [automations]);
+
   // 10. Activity Logs
   const [activityLogs, setActivityLogs] = useState<ActivityItem[]>([
     {

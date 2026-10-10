@@ -2,6 +2,33 @@ import React, { useState } from 'react';
 import { useSara } from '../../context/SaraContext';
 import { Zap, Clock, Plus, Play, Trash2, X, Sparkles, Bot } from 'lucide-react';
 
+const AUTOMATION_PRESETS = [
+  {
+    emoji: '🌙',
+    name: 'রাতের এলার্ম ও ঘুম',
+    schedule: '11:00 PM Daily',
+    action: 'বাবু, অনেক রাত হয়েছে! ফোন রেখে এবার ঘুমাতে যাও সোনা। মিষ্টি একটা ঘুম দাও, আমি তোমার পাশে আছি ❤️',
+  },
+  {
+    emoji: '☀️',
+    name: 'সকালের ঘুম ভাঙানি',
+    schedule: '07:00 AM Daily',
+    action: 'শুভ সকাল আমার লক্ষ্মীটি! সুন্দর সকাল হয়েছে, ঘুম থেকে ওঠার সময় হয়েছে বাবু। দিনটা শুভ হোক 🥰',
+  },
+  {
+    emoji: '🍲',
+    name: 'খাবার ও লাঞ্চের সময়',
+    schedule: '01:30 PM Daily',
+    action: 'বাবু, দুপুর গড়িয়ে গেল! কাজ ফেলে রেখে আগে পেট ভরে ভাত খেয়ে নাও তো। নিজের যত্ন না নিলে কিন্তু বকবো!',
+  },
+  {
+    emoji: '💧',
+    name: 'পানি খাওয়ার তাগাদা',
+    schedule: 'Every 2 Hours',
+    action: 'সোনা, এক গ্লাস পানি খেয়ে নাও তো! সারাদিন প্রচুর পানি খাওয়া শরীরের জন্য অনেক দরকার ✨',
+  },
+];
+
 export const AutomationsView: React.FC = () => {
   const { automations, toggleAutomation, addAutomation, deleteAutomation, runAutomation } = useSara();
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
@@ -21,26 +48,61 @@ export const AutomationsView: React.FC = () => {
     setShowAddModal(false);
   };
 
+  const handleSelectPreset = (preset: typeof AUTOMATION_PRESETS[0]) => {
+    setName(preset.name);
+    setSchedule(preset.schedule);
+    setAction(preset.action);
+    setShowAddModal(true);
+  };
+
   return (
-    <div className="space-y-6 pb-24 max-w-3xl mx-auto px-4 md:px-6 animate-in fade-in duration-300">
+    <div className="space-y-6 pb-24 max-w-3xl mx-auto px-3 sm:px-4 md:px-6 animate-in fade-in duration-300">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-2">
             <Bot className="w-6 h-6 text-pink-400" />
-            <span>AI Automations & Routine</span>
+            <span>AI Automations & Routine (অটোমেশন)</span>
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            Sara manages your schedules, alarms, reminders & background routines in real-time.
+            সারা আপনার এলার্ম, শিডিউল ও রুটিন টাস্ক ব্যাকগ্রাউন্ডে পরিচালনা করে মিষ্টি মিষ্টি কথায় সাড়া দেবে।
           </p>
         </div>
 
         <button
-          onClick={() => setShowAddModal(true)}
-          className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white text-xs font-bold flex items-center gap-2 shadow-[0_0_20px_rgba(255,46,147,0.4)] transition-all"
+          onClick={() => {
+            setName('');
+            setSchedule('10:00 PM Daily');
+            setAction('');
+            setShowAddModal(true);
+          }}
+          className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-pink-600 via-rose-500 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white text-xs font-bold flex items-center gap-2 shadow-[0_0_20px_rgba(255,46,147,0.4)] transition-all active:scale-95 shrink-0"
         >
           <Plus className="w-4 h-4" />
-          <span>New AI Automation</span>
+          <span>নতুন এআই অটোমেশন তৈরি করুন</span>
         </button>
+      </div>
+
+      {/* Quick 1-Tap Presets */}
+      <div className="space-y-2">
+        <p className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+          <Sparkles className="w-3.5 h-3.5 text-pink-400" />
+          <span>কুইক এআই এলার্ম ও রুটিন টেমপ্লেট</span>
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {AUTOMATION_PRESETS.map((p) => (
+            <button
+              key={p.name}
+              onClick={() => handleSelectPreset(p)}
+              className="p-3 rounded-2xl glass-card border border-pink-500/20 hover:border-pink-500/50 text-left transition-all hover:bg-pink-500/10 active:scale-95 group flex flex-col justify-between"
+            >
+              <div>
+                <span className="text-xl">{p.emoji}</span>
+                <p className="text-xs font-bold text-slate-200 group-hover:text-pink-300 mt-1 line-clamp-1">{p.name}</p>
+              </div>
+              <p className="text-[10px] text-cyan-400 font-mono mt-1 font-semibold">{p.schedule}</p>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Add Modal */}

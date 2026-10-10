@@ -8,7 +8,6 @@ import {
   Zap,
   ShieldCheck,
   Activity,
-  CircleDollarSign,
   Settings,
   Heart,
 } from 'lucide-react';
@@ -26,18 +25,18 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
   onTabChange,
   onOpenVoice,
 }) => {
-  const { coinBalance, userProfile, isPassActive } = useSara();
+  const { userProfile, automations } = useSara();
+  const activeAutomations = automations.filter((a) => a.enabled).length;
 
   const navItems = [
     { id: 'home', label: 'Home Dashboard', icon: Home },
     { id: 'chat', label: 'Chat with Sara', icon: MessageSquare },
     { id: 'voice', label: 'Live Voice Mode', icon: Mic, action: onOpenVoice },
     { id: 'avatar', label: '3D Human Wardrobe', icon: User },
-    { id: 'automations', label: 'Automations', icon: Zap },
+    { id: 'automations', label: 'AI Automations', icon: Zap, badge: `${activeAutomations} Active` },
     { id: 'memories', label: 'Memory Bank', icon: Brain },
     { id: 'permissions', label: 'Permission Center', icon: ShieldCheck },
     { id: 'activity', label: 'Activity Logs', icon: Activity },
-    { id: 'coins', label: 'Coins & Pass', icon: CircleDollarSign, badge: `${coinBalance} 🪙` },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
@@ -56,16 +55,16 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
         </div>
       </div>
 
-      {/* VIP Status Tag */}
-      <div className="px-3 py-2 rounded-xl bg-gradient-to-r from-pink-950/40 to-purple-950/40 border border-pink-500/25 mb-4 flex items-center justify-between">
+      {/* AI Automation Status Tag */}
+      <div className="px-3 py-2 rounded-xl bg-gradient-to-r from-cyan-950/40 to-purple-950/40 border border-cyan-500/25 mb-4 flex items-center justify-between">
         <div>
-          <p className="text-[10px] uppercase tracking-wider text-pink-400 font-semibold">Companion Pass</p>
+          <p className="text-[10px] uppercase tracking-wider text-cyan-400 font-semibold">AI Auto Engine</p>
           <p className="text-xs font-medium text-slate-200">
-            {isPassActive ? 'VIP Pass Active' : 'Free Tier'}
+            {activeAutomations > 0 ? `${activeAutomations} Routines Active` : 'Engine Ready'}
           </p>
         </div>
-        <span className="px-2 py-0.5 rounded-full text-[10px] bg-pink-500/20 text-pink-300 border border-pink-500/30 font-mono">
-          {coinBalance} 🪙
+        <span className="px-2 py-0.5 rounded-full text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-mono">
+          Online
         </span>
       </div>
 

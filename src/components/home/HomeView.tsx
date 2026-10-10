@@ -12,9 +12,7 @@ import {
   Star,
   Send,
   BarChart2,
-  Gift,
   Check,
-  Flame,
   Minus,
   Plus,
   Play,
@@ -47,11 +45,6 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
     speakText,
     isSpeaking,
     activeAvatarId,
-    coinBalance,
-    claimDailyReward,
-    isDailyRewardClaimed,
-    dailyRewardCountdown,
-    dailyStreak,
     automations,
     toggleAutomation,
     runAutomation,
@@ -129,17 +122,20 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
           {/* Module 3: Data (Automations Section) */}
           <button
             onClick={() => onNavigate('automations' as any)}
-            className="p-2.5 rounded-2xl glass-card border border-cyan-500/30 hover:border-cyan-500/60 flex items-center justify-between transition-all group active:scale-95 text-left bg-gradient-to-r from-cyan-950/40 to-purple-950/20"
+            className="p-2.5 rounded-2xl glass-card border border-cyan-500/40 hover:border-cyan-400 flex items-center justify-between transition-all group active:scale-95 text-left bg-gradient-to-r from-cyan-950/60 via-purple-950/30 to-[#070617] shadow-[0_0_15px_rgba(6,182,212,0.18)]"
           >
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:scale-105">
-                <Zap className="w-3.5 h-3.5" />
+              <div className="w-7 h-7 rounded-lg bg-cyan-500/25 flex items-center justify-center text-cyan-300 group-hover:scale-105 shadow-[0_0_10px_rgba(6,182,212,0.3)]">
+                <Zap className="w-4 h-4 fill-cyan-400/30" />
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-100">Data</p>
+                <p className="text-xs font-bold text-cyan-100 flex items-center gap-1">
+                  <span>Data</span>
+                  <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-500/20 text-cyan-300 font-mono">AI</span>
+                </p>
                 <div className="flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                  <span className="text-[10px] text-cyan-300">অটোমেশন</span>
+                  <span className="text-[10px] text-cyan-300 font-bold">অটোমেশন</span>
                 </div>
               </div>
             </div>
@@ -380,25 +376,25 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
       </div>
 
       {/* DATA & AI AUTOMATION SECTION (অটোমেশন ও স্মার্ট এলার্ম) */}
-      <div className="p-4 rounded-3xl glass-card border border-cyan-500/25 space-y-3 bg-gradient-to-br from-[#080d1e]/80 via-[#0e0720]/80 to-[#120524]/80 shadow-[0_0_20px_rgba(6,182,212,0.1)]">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-400">
-              <Zap className="w-4 h-4" />
+      <div className="p-3.5 sm:p-4 rounded-3xl glass-card border border-cyan-500/30 space-y-3 bg-gradient-to-br from-[#080d1e]/90 via-[#0e0720]/85 to-[#120524]/90 shadow-[0_0_20px_rgba(6,182,212,0.12)]">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-cyan-500/25 flex items-center justify-center text-cyan-400 shrink-0 shadow-[0_0_10px_rgba(6,182,212,0.3)]">
+              <Zap className="w-4 h-4 fill-cyan-400/30" />
             </div>
-            <div>
-              <h3 className="text-xs font-bold text-slate-100 tracking-wider uppercase flex items-center gap-1.5">
+            <div className="min-w-0">
+              <h3 className="text-xs font-bold text-slate-100 tracking-wider uppercase flex items-center gap-1.5 flex-wrap">
                 <span>DATA · AI AUTOMATIONS</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-cyan-300 font-mono">
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-cyan-300 font-mono font-bold">
                   {automations.filter((a) => a.enabled).length} ACTIVE
                 </span>
               </h3>
-              <p className="text-[10px] text-slate-400">স্মার্ট শিডিউল, এলার্ম ও ব্যাকগ্রাউন্ড রিমাইন্ডার</p>
+              <p className="text-[10px] text-cyan-300/80 truncate">স্মার্ট এলার্ম, শিডিউল ও ব্যাকগ্রাউন্ড রুটিন</p>
             </div>
           </div>
           <button
             onClick={() => onNavigate('automations' as any)}
-            className="px-2.5 py-1 rounded-xl text-[11px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 transition-all flex items-center gap-1"
+            className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/40 transition-all flex items-center gap-1 shrink-0"
           >
             <span>সব দেখুন</span>
             <ChevronRight className="w-3 h-3" />
@@ -410,13 +406,13 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
           {automations.slice(0, 3).map((item) => (
             <div
               key={item.id}
-              className={`p-3 rounded-2xl border transition-all flex items-center justify-between ${
+              className={`p-2.5 sm:p-3 rounded-2xl border transition-all flex items-center justify-between gap-2 ${
                 item.enabled
-                  ? 'bg-slate-900/70 border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.1)]'
+                  ? 'bg-slate-900/80 border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.1)]'
                   : 'bg-slate-900/40 border-slate-800 opacity-60'
               }`}
             >
-              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
                 <div
                   className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
                     item.enabled ? 'bg-cyan-500/20 text-cyan-400' : 'bg-slate-800 text-slate-500'
@@ -424,15 +420,13 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
                 >
                   <Clock className="w-4 h-4" />
                 </div>
-                <div className="truncate">
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs font-bold text-slate-100 truncate">{item.name}</p>
-                  </div>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[10px] font-mono font-bold text-cyan-400 bg-cyan-950/60 px-1.5 py-0.2 rounded border border-cyan-500/30">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-slate-100 truncate">{item.name}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+                    <span className="text-[9px] font-mono font-bold text-cyan-300 bg-cyan-950/80 px-1.5 py-0.2 rounded border border-cyan-500/30 shrink-0">
                       {item.schedule}
                     </span>
-                    <span className="text-[10px] text-slate-400 truncate max-w-[130px] sm:max-w-[200px]">
+                    <span className="text-[10px] text-slate-400 truncate flex-1 min-w-0">
                       {item.action}
                     </span>
                   </div>
@@ -440,12 +434,12 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
               </div>
 
               {/* Actions: Run Now + Toggle */}
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 <button
                   onClick={() => handleRunAuto(item.id)}
                   disabled={runningAutoId === item.id}
                   title="এখনই রান করুন"
-                  className="w-8 h-8 rounded-xl bg-pink-500/15 hover:bg-pink-500/30 border border-pink-500/30 text-pink-400 flex items-center justify-center active:scale-95 transition-all disabled:opacity-50"
+                  className="w-8 h-8 rounded-xl bg-pink-500/15 hover:bg-pink-500/30 border border-pink-500/30 text-pink-400 flex items-center justify-center active:scale-95 transition-all disabled:opacity-50 shrink-0"
                 >
                   {runningAutoId === item.id ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -456,9 +450,10 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
 
                 <button
                   onClick={() => toggleAutomation(item.id)}
-                  className={`w-9 h-5 rounded-full transition-colors relative p-0.5 ${
+                  className={`w-9 h-5 rounded-full transition-colors relative p-0.5 shrink-0 ${
                     item.enabled ? 'bg-cyan-500' : 'bg-slate-700'
                   }`}
+                  aria-label="Toggle automation"
                 >
                   <div
                     className={`w-4 h-4 rounded-full bg-white transition-transform ${
@@ -474,7 +469,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
         {/* Add New / Manage CTA Button */}
         <button
           onClick={() => onNavigate('automations' as any)}
-          className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-cyan-950/40 via-purple-950/40 to-pink-950/40 border border-cyan-500/30 hover:border-cyan-500/60 text-slate-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all hover:text-white"
+          className="w-full py-2.5 px-3 rounded-2xl bg-gradient-to-r from-cyan-950/50 via-purple-950/40 to-pink-950/50 border border-cyan-500/30 hover:border-cyan-500/60 text-slate-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all hover:text-white active:scale-98"
         >
           <Plus className="w-3.5 h-3.5 text-cyan-400" />
           <span>নতুন এআই এলার্ম বা অটোমেশন সেট করুন</span>
@@ -556,90 +551,6 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
         </p>
       </div>
 
-      {/* 4. DAILY REWARD & STREAK SECTION */}
-      <div className="p-4 rounded-3xl glass-card border border-pink-500/20 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Gift className="w-4 h-4 text-pink-400" />
-            <h3 className="text-xs font-bold text-slate-200 tracking-wider uppercase">
-              DAILY REWARD & STREAK
-            </h3>
-          </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-pink-500/10 border border-pink-500/30 text-pink-400 text-xs font-bold">
-            <Flame className="w-3.5 h-3.5 fill-pink-500 text-pink-400 animate-pulse" />
-            <span>Day {dailyStreak} Streak</span>
-          </div>
-        </div>
-
-        {/* 7-Day Streak Pills */}
-        <div className="grid grid-cols-7 gap-1 text-center">
-          {[10, 20, 30, 50, 75, 100, 250].map((amt, idx) => {
-            const dayNum = idx + 1;
-            const isCompleted = dayNum < dailyStreak || (dayNum === dailyStreak && isDailyRewardClaimed);
-            const isToday = dayNum === dailyStreak && !isDailyRewardClaimed;
-
-            return (
-              <div
-                key={dayNum}
-                className={`p-1.5 rounded-xl border flex flex-col items-center justify-between transition-all ${
-                  isCompleted
-                    ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-400'
-                    : isToday
-                    ? 'bg-gradient-to-b from-pink-900/60 to-purple-900/60 border-pink-500 text-pink-300 ring-2 ring-pink-500/40 shadow-lg scale-105'
-                    : 'bg-slate-900/60 border-slate-800 text-slate-400 opacity-60'
-                }`}
-              >
-                <span className="text-[9px] font-bold">D{dayNum}</span>
-                <span className="text-[11px] font-extrabold font-mono mt-0.5">+{amt}</span>
-                {isCompleted ? (
-                  <Check className="w-3 h-3 text-emerald-400 mt-1" />
-                ) : (
-                  <span className="text-[9px] text-amber-400 mt-1">🪙</span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Claim Action Box */}
-        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-slate-900/90 to-purple-950/40 border border-purple-500/30 flex items-center justify-between">
-          <div>
-            <h4 className="text-sm font-bold text-slate-100 flex items-center gap-1.5">
-              <span>আজকের রিওয়ার্ড:</span>
-              <span className="text-emerald-400 font-mono font-extrabold">
-                +{[10, 20, 30, 50, 75, 100, 250][(dailyStreak - 1) % 7]} Coins
-              </span>
-            </h4>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              {isDailyRewardClaimed
-                ? `আজকের রিওয়ার্ড ক্লেইম করা হয়েছে ✓ পরবর্তী রিওয়ার্ড: ${dailyRewardCountdown}`
-                : 'প্রতিদিন লগইন করে ফ্রিতে সারার কয়েন জিতে নিন!'}
-            </p>
-          </div>
-
-          <button
-            onClick={() => claimDailyReward()}
-            disabled={isDailyRewardClaimed}
-            className={`px-4 py-2 rounded-xl text-xs font-bold tracking-wider transition-all flex items-center gap-1.5 shrink-0 ${
-              isDailyRewardClaimed
-                ? 'bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 cursor-default'
-                : 'bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white shadow-[0_0_15px_rgba(16,185,129,0.5)] active:scale-95 animate-pulse'
-            }`}
-          >
-            {isDailyRewardClaimed ? (
-              <>
-                <Check className="w-4 h-4" />
-                <span>Claimed</span>
-              </>
-            ) : (
-              <>
-                <Gift className="w-4 h-4" />
-                <span>Claim Now</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
 
       {/* 5. SARA'S CARING VOICE QUOTE CARD from screenshot #9 */}
       <div

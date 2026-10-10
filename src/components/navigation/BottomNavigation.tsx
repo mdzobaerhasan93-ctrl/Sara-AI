@@ -1,12 +1,12 @@
 import React from 'react';
-import { Home, User, Heart, CircleDollarSign, Settings } from 'lucide-react';
+import { Home, User, Heart, Zap, Settings } from 'lucide-react';
 import { useSara } from '../../context/SaraContext';
 
-export type TabType = 'home' | 'avatar' | 'voice' | 'coins' | 'settings' | 'chat';
+export type TabType = 'home' | 'avatar' | 'voice' | 'automations' | 'settings' | 'chat';
 
 interface BottomNavigationProps {
-  activeTab: TabType;
-  onTabChange: (tab: TabType) => void;
+  activeTab: TabType | 'automations' | 'permissions' | 'activity' | 'memories';
+  onTabChange: (tab: any) => void;
   onOpenVoice: () => void;
 }
 
@@ -15,10 +15,11 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   onTabChange,
   onOpenVoice,
 }) => {
-  const { isDailyRewardClaimed, assistantState } = useSara();
+  const { assistantState, automations } = useSara();
+  const activeAutomationsCount = automations.filter((a) => a.enabled).length;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#070617]/90 backdrop-blur-xl border-t border-pink-500/20 px-3 py-2 safe-pb md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#070617]/95 backdrop-blur-xl border-t border-pink-500/20 px-3 py-2 safe-pb md:hidden shadow-[0_-5px_25px_rgba(0,0,0,0.5)]">
       <div className="max-w-md mx-auto flex items-center justify-around relative">
         {/* Home */}
         <button
@@ -29,7 +30,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
         >
           <Home className="w-5 h-5" />
           <span className="text-[11px]">Home</span>
-          {activeTab === 'home' && <span className="w-1 h-1 rounded-full bg-pink-500" />}
+          {activeTab === 'home' && <span className="w-1 h-1 rounded-full bg-pink-500 shadow-[0_0_8px_#ec4899]" />}
         </button>
 
         {/* Avatar */}
@@ -41,7 +42,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
         >
           <User className="w-5 h-5" />
           <span className="text-[11px]">Avatar</span>
-          {activeTab === 'avatar' && <span className="w-1 h-1 rounded-full bg-pink-500" />}
+          {activeTab === 'avatar' && <span className="w-1 h-1 rounded-full bg-pink-500 shadow-[0_0_8px_#ec4899]" />}
         </button>
 
         {/* Central Heart Button (Voice / Talk with Sara) */}
@@ -65,21 +66,23 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
           </button>
         </div>
 
-        {/* Coins */}
+        {/* Automations (অটোমেশন) - Prominently on mobile phones */}
         <button
-          onClick={() => onTabChange('coins')}
+          onClick={() => onTabChange('automations')}
           className={`flex flex-col items-center gap-1 relative transition-colors ${
-            activeTab === 'coins' ? 'text-pink-400 font-semibold' : 'text-slate-400 hover:text-slate-200'
+            activeTab === 'automations' ? 'text-cyan-400 font-semibold' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
           <div className="relative">
-            <CircleDollarSign className="w-5 h-5" />
-            {!isDailyRewardClaimed && (
-              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-pink-500 animate-pulse" />
+            <Zap className={`w-5 h-5 ${activeTab === 'automations' ? 'text-cyan-400 fill-cyan-400/30' : ''}`} />
+            {activeAutomationsCount > 0 && (
+              <span className="absolute -top-1 -right-2 px-1 rounded-full text-[9px] font-bold bg-cyan-500 text-black leading-tight">
+                {activeAutomationsCount}
+              </span>
             )}
           </div>
-          <span className="text-[11px]">Coins</span>
-          {activeTab === 'coins' && <span className="w-1 h-1 rounded-full bg-pink-500" />}
+          <span className="text-[11px]">{activeTab === 'automations' ? 'অটোমেশন' : 'Automation'}</span>
+          {activeTab === 'automations' && <span className="w-1 h-1 rounded-full bg-cyan-400 shadow-[0_0_8px_#06b6d4]" />}
         </button>
 
         {/* Settings */}
@@ -91,7 +94,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
         >
           <Settings className="w-5 h-5" />
           <span className="text-[11px]">Settings</span>
-          {activeTab === 'settings' && <span className="w-1 h-1 rounded-full bg-pink-500" />}
+          {activeTab === 'settings' && <span className="w-1 h-1 rounded-full bg-pink-500 shadow-[0_0_8px_#ec4899]" />}
         </button>
       </div>
     </nav>

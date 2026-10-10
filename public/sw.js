@@ -61,3 +61,33 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
+// Background Alarm & Notification Click Handling
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow('/');
+      }
+    })
+  );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SHOW_ALARM_NOTIFICATION') {
+    self.registration.showNotification(event.data.title || 'SARA AI Alarm ❤️', {
+      body: event.data.body || 'আপনার এলার্ম সময় হয়েছে সোনা!',
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      vibrate: [300, 150, 300, 150, 300],
+      tag: 'sara-automation-alarm',
+      renotify: true,
+    });
+  }
+});
