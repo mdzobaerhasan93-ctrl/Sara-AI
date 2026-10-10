@@ -8,36 +8,52 @@ interface UseWakeWordOptions {
 }
 
 export function useWakeWord({
-  wakeWords = ['hey sara', 'sara', 'সারা', 'hello hello', 'hey zara', 'zara'],
+  wakeWords = ['hey sara', 'sara', 'সারা'],
   onWakeWordDetected,
   isVoiceModalOpen,
-  enabled = true,
+  enabled = false,
 }: UseWakeWordOptions) {
-  const [isHandsFreeActive, setIsHandsFreeActive] = useState<boolean>(() => {
-    return localStorage.getItem('sara_hands_free_active') === 'true';
-  });
+  // Always default to false to prevent browser mic activation chimes ("টুনটুন" sound)
+  const [isHandsFreeActive, setIsHandsFreeActive] = useState<boolean>(false);
   const [isSupported, setIsSupported] = useState<boolean>(true);
   const [lastDetected, setLastDetected] = useState<string | null>(null);
 
   const recognitionRef = useRef<any>(null);
   const isRunningRef = useRef<boolean>(false);
-  const restartTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Silent chime to ensure zero annoying sounds
-  const playWakeChime = useCallback(() => {
-    // Sound disabled per user request
+  // Clear any legacy auto-active flag from localStorage
+  useEffect(() => {
+    try {
+      localStorage.removeItem('sara_hands_free_active');
+    } catch (e) {}
   }, []);
 
   const toggleHandsFree = useCallback(() => {
     setIsHandsFreeActive((prev) => {
       const next = !prev;
-      localStorage.setItem('sara_hands_free_active', next.toString());
+      if (!next && recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch (e) {}
+        isRunningRef.current = false;
+      }
       return next;
     });
   }, []);
 
   // Main Recognition Listener Lifecycle
   useEffect(() => {
+    // If not manually activated or voice modal is already open, keep mic strictly stopped
+    if (!isHandsFreeActive || isVoiceModalOpen || !enabled) {
+      if (recognitionRef.current && isRunningRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch (e) {}
+        isRunningRef.current = false;
+      }
+      return;
+    }
+
     const SpeechRecognitionClass =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
@@ -46,21 +62,10 @@ export function useWakeWord({
       return;
     }
 
-    // Do not run background wake-word listener if voice modal is already open
-    if (isVoiceModalOpen || !isHandsFreeActive || !enabled) {
-      if (recognitionRef.current && isRunningRef.current) {
-        try {
-          recognitionRef.current.abort();
-        } catch (e) { }
-        isRunningRef.current = false;
-      }
-      return;
-    }
-
     const recognition = new SpeechRecognitionClass();
-    recognition.continuous = true;
+    recognition.continuous = false; // Never use continuous auto-looping
     recognition.interimResults = true;
-    recognition.lang = 'en-US'; // handles Hey Sara, Hello Hello, etc.
+    recognition.lang = 'en-US';
 
     recognition.onstart = () => {
       isRunningRef.current = true;
@@ -72,74 +77,53 @@ export function useWakeWord({
         fullTranscript += event.results[i][0].transcript.toLowerCase() + ' ';
       }
 
-      // Check standard wake words
       let matchedWord: string | null = null;
       for (const word of wakeWords) {
-        const normalized = word.toLowerCase().trim();
-        if (fullTranscript.includes(normalized)) {
+        if (fullTranscript.includes(word.toLowerCase().trim())) {
           matchedWord = word;
           break;
         }
       }
 
-      // Also check phonetic / bilingual variations (Hey Sara, Sara, সারা, Hey Zara)
-      if (!matchedWord) {
-        if (/hey\s*sara|hello\s*sara|হেই\s*সারা|সারা|hey\s*zara|hello\s*hello|hi\s*sara/i.test(fullTranscript)) {
-          matchedWord = 'Hey SARA';
-        }
+      if (!matchedWord && /hey\s*sara|হেই\s*সারা|সারা/i.test(fullTranscript)) {
+        matchedWord = 'Hey SARA';
       }
 
       if (matchedWord) {
         setLastDetected(matchedWord);
-        playWakeChime();
-
         try {
           recognition.abort();
-        } catch (e) { }
+        } catch (e) {}
         isRunningRef.current = false;
-
+        setIsHandsFreeActive(false); // Stop once detected
         onWakeWordDetected(matchedWord);
       }
     };
 
-    recognition.onerror = (event: any) => {
-      // Ignore routine aborts or non-fatal silences
-      if (event.error === 'not-allowed') {
-        setIsHandsFreeActive(false);
-      }
+    recognition.onerror = () => {
+      isRunningRef.current = false;
     };
 
     recognition.onend = () => {
       isRunningRef.current = false;
-      // Auto-restart if hands-free is enabled and voice modal is still closed
-      if (isHandsFreeActive && !isVoiceModalOpen && enabled) {
-        restartTimerRef.current = setTimeout(() => {
-          try {
-            recognition.start();
-          } catch (e) { }
-        }, 600);
-      }
     };
 
     try {
       recognition.start();
       recognitionRef.current = recognition;
     } catch (e) {
-      console.warn('Wake word recognition start warning:', e);
+      isRunningRef.current = false;
     }
 
     return () => {
-      if (restartTimerRef.current) {
-        clearTimeout(restartTimerRef.current);
-      }
       if (recognitionRef.current) {
         try {
           recognitionRef.current.abort();
-        } catch (e) { }
+        } catch (e) {}
         isRunningRef.current = false;
       }
     };
-  }, [isVoiceModalOpen, isHandsFreeActive, enabled, wakeWords, onWakeWordDetected, playWakeChime]);
+  }, [isVoiceModalOpen, isHandsFreeActive, enabled, wakeWords, onWakeWordDetected]);
 
   return {
     isHandsFreeActive,

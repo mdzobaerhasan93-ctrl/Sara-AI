@@ -15,6 +15,8 @@ export const Header: React.FC<HeaderProps> = () => {
     activityLogs,
     isSpeaking,
     stopSpeech,
+    activeRingingAlarm,
+    dismissAlarm,
   } = useSara();
   const [showNotificationModal, setShowNotificationModal] = useState<boolean>(false);
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
@@ -87,6 +89,18 @@ export const Header: React.FC<HeaderProps> = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Quick Alarm Stop Button if ringing */}
+          {activeRingingAlarm && (
+            <button
+              onClick={() => dismissAlarm()}
+              className="px-3 py-1.5 rounded-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 animate-bounce shadow-[0_0_15px_rgba(244,63,94,0.7)]"
+              title="অ্যালার্ম সাউন্ড বন্ধ করুন"
+            >
+              <Bell className="w-3.5 h-3.5 animate-spin" />
+              <span>সাউন্ড থামান</span>
+            </button>
+          )}
+
           {/* Login / Signup Button */}
           <button
             onClick={() => setShowAuthModal(true)}

@@ -103,6 +103,8 @@ export interface AutomationItem {
   action: string;
   enabled: boolean;
   lastRun?: string;
+  targetTime?: string;
+  targetTimestamp?: number;
 }
 
 export interface ActivityItem {

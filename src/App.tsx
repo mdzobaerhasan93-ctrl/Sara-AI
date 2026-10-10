@@ -15,11 +15,17 @@ import { WakeWordIndicator } from './components/voice/WakeWordIndicator';
 import { useWakeWord } from './hooks/useWakeWord';
 import { Download, Sparkles } from 'lucide-react';
 import { FloatingScreenControlOrb } from './components/home/FloatingScreenControlOrb';
+import { AlarmRingingModal } from './components/automations/AlarmRingingModal';
 
 const MainLayout: React.FC = () => {
-  const { userProfile, speakText } = useSara();
+  const { userProfile, speakText, setOnOpenVoiceModal } = useSara();
   const [activeTab, setActiveTab] = useState<TabType | 'memories' | 'automations' | 'permissions' | 'activity'>('home');
   const [isVoiceOpen, setIsVoiceOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    setOnOpenVoiceModal(() => setIsVoiceOpen(true));
+  }, [setOnOpenVoiceModal]);
+
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState<boolean>(false);
   const [wakeWordAlert, setWakeWordAlert] = useState<string | null>(null);
@@ -169,6 +175,9 @@ const MainLayout: React.FC = () => {
           isOpen={isVoiceOpen}
           onClose={() => setIsVoiceOpen(false)}
         />
+
+        {/* Real Alarm Ringing Overlay Modal */}
+        <AlarmRingingModal />
 
         {/* Floating Screen Control Background Orb */}
         <FloatingScreenControlOrb onOpenVoice={() => setIsVoiceOpen(true)} />

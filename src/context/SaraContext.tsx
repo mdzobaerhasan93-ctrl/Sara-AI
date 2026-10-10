@@ -14,6 +14,7 @@ import {
   CoinTransaction,
   AppPermissions,
 } from '../types';
+import { alarmAudio, checkScheduleMatch } from '../utils/alarmSound';
 
 interface SaraContextType {
   // Assistant Status
@@ -56,12 +57,18 @@ interface SaraContextType {
   removeMemory: (id: string) => void;
   toggleMemory: (id: string) => void;
 
-  // Automations & Activity
+  // Automations & Alarms
   automations: AutomationItem[];
   toggleAutomation: (id: string) => void;
-  addAutomation: (name: string, schedule: string, action: string) => void;
+  addAutomation: (name: string, schedule: string, action: string, targetTime?: string, targetTimestamp?: number) => void;
   deleteAutomation: (id: string) => void;
   runAutomation: (id: string) => Promise<void>;
+  activeRingingAlarm: AutomationItem | null;
+  dismissAlarm: () => void;
+  snoozeAlarm: (id: string, minutes?: number) => void;
+  triggerAlarmNow: (auto: AutomationItem) => void;
+  onOpenVoiceModal?: () => void;
+  setOnOpenVoiceModal: (cb: () => void) => void;
   activityLogs: ActivityItem[];
   addActivityLog: (log: Omit<ActivityItem, 'id' | 'timestamp'>) => void;
 
@@ -327,7 +334,16 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [automations, setAutomations] = useState<AutomationItem[]>(() => {
     const saved = localStorage.getItem('sara_automations');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+      try {
+        const parsed: AutomationItem[] = JSON.parse(saved);
+        // Ensure default initial auto_1/auto_2 don't auto-ring on launch unless explicitly set
+        return parsed.map((a) => {
+          if ((a.id === 'auto_1' || a.id === 'auto_2') && !localStorage.getItem('sara_user_enabled_' + a.id)) {
+            return { ...a, enabled: false };
+          }
+          return a;
+        });
+      } catch (e) {}
     }
     return [
       {
@@ -335,17 +351,19 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
         name: 'সকালের ব্রিফিং ও শুভ সকাল',
         trigger: 'Schedule',
         schedule: '08:00 AM Daily',
+        targetTime: '08:00',
         action: 'Wake up greeting + Weather report + Todays Agenda',
-        enabled: true,
-        lastRun: 'Today at 08:00 AM',
+        enabled: false,
+        lastRun: 'Yesterday at 08:00 AM',
       },
       {
         id: 'auto_2',
         name: 'রাতে ঘুমের আগে ভালোবাসার বার্তা',
         trigger: 'Schedule',
         schedule: '11:30 PM Daily',
+        targetTime: '23:30',
         action: 'Sweet dreams reminder + Positive affirmation',
-        enabled: true,
+        enabled: false,
         lastRun: 'Yesterday at 11:30 PM',
       },
       {
@@ -365,20 +383,42 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const toggleAutomation = (id: string) => {
     setAutomations((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, enabled: !a.enabled } : a))
+      prev.map((a) => {
+        if (a.id === id) {
+          const nextVal = !a.enabled;
+          if (nextVal) {
+            localStorage.setItem('sara_user_enabled_' + id, 'true');
+            alarmAudio.unlock();
+          } else {
+            localStorage.removeItem('sara_user_enabled_' + id);
+          }
+          return { ...a, enabled: nextVal };
+        }
+        return a;
+      })
     );
   };
 
-  const addAutomation = (name: string, schedule: string, action: string) => {
+  const addAutomation = (
+    name: string,
+    schedule: string,
+    action: string,
+    targetTime?: string,
+    targetTimestamp?: number
+  ) => {
+    alarmAudio.unlock();
     const newItem: AutomationItem = {
       id: `auto_${Date.now()}`,
       name,
-      trigger: 'AI Scheduled',
+      trigger: targetTimestamp ? 'Countdown Alarm' : 'AI Scheduled',
       schedule,
       action,
       enabled: true,
+      targetTime,
+      targetTimestamp,
       lastRun: undefined,
     };
+    localStorage.setItem('sara_user_enabled_' + newItem.id, 'true');
     setAutomations((prev) => [newItem, ...prev]);
     addActivityLog({
       title: `New AI automation created: ${name}`,
@@ -387,7 +427,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
       status: 'SUCCESS',
       details: action,
     });
-    speakText(`আপনার নতুন অটোমেশন '${name}' সফলভাবে চালু করা হয়েছে ❤️`, 'happy');
+    speakText(`আপনার নতুন অ্যালার্ম ও অটোমেশন '${name}' সেট করা হয়েছে ❤️`, 'happy');
   };
 
   const deleteAutomation = (id: string) => {
@@ -438,40 +478,102 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Background Routine & Automation Scheduler
+  // Ringing Alarm State
+  const [activeRingingAlarm, setActiveRingingAlarm] = useState<AutomationItem | null>(null);
+  const [onOpenVoiceModalCb, setOnOpenVoiceModalCb] = useState<(() => void) | undefined>(undefined);
+
+  // Stop any lingering audio on mount so app launch never auto-plays sound
+  useEffect(() => {
+    alarmAudio.stop();
+  }, []);
+
+  const triggerAlarmNow = (auto: AutomationItem) => {
+    setActiveRingingAlarm(auto);
+    alarmAudio.unlock();
+    alarmAudio.start();
+
+    // Trigger Service Worker background notification
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'SHOW_ALARM_NOTIFICATION',
+        title: `⏰ ${auto.name} (SARA AI)`,
+        body: auto.action,
+      });
+    }
+
+    addActivityLog({
+      title: `Alarm Ringing: ${auto.name}`,
+      type: 'automation',
+      service: 'Real AI Alarm & Scheduler',
+      status: 'SUCCESS',
+      details: auto.action,
+    });
+
+    // Update lastRun & if one-shot timestamp test alarm, mark enabled: false
+    setAutomations((prev) =>
+      prev.map((a) =>
+        a.id === auto.id
+          ? {
+              ...a,
+              enabled: a.targetTimestamp ? false : a.enabled,
+              lastRun: `Just now (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`,
+            }
+          : a
+      )
+    );
+
+    // Speak caring greeting
+    speakText(`বাবু! তোমার অ্যালার্মের সময় হয়েছে ❤️ ${auto.name}। সময় হয়ে গেছে সোনা!`, 'excited').catch(() => {});
+  };
+
+  const dismissAlarm = () => {
+    alarmAudio.stop();
+    setActiveRingingAlarm(null);
+  };
+
+  const snoozeAlarm = (id: string, minutes = 5) => {
+    alarmAudio.stop();
+    setActiveRingingAlarm(null);
+
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + minutes);
+    const snoozeHour = (now.getHours() % 12 || 12).toString().padStart(2, '0');
+    const snoozeMinute = now.getMinutes().toString().padStart(2, '0');
+    const snoozeAmPm = now.getHours() >= 12 ? 'PM' : 'AM';
+    const snoozeSchedule = `${snoozeHour}:${snoozeMinute} ${snoozeAmPm}`;
+    const snoozeTargetTime = `${now.getHours().toString().padStart(2, '0')}:${snoozeMinute}`;
+
+    setAutomations((prev) =>
+      prev.map((a) =>
+        a.id === id ? { ...a, schedule: snoozeSchedule, targetTime: snoozeTargetTime, enabled: true } : a
+      )
+    );
+
+    speakText(`ঠিক আছে বাবু! ৫ মিনিট পর ${snoozeSchedule} এ তোমাকে আবার ডেকে দেব ❤️`, 'caring').catch(() => {});
+  };
+
+  // Background Routine & Automation Scheduler (checks every 2.5 seconds with robust time parser)
   useEffect(() => {
     const checkSchedule = () => {
       const now = new Date();
-      const currentHours = now.getHours();
-      const currentMinutes = now.getMinutes();
-      const isAm = currentHours < 12;
-      const formattedHour = (currentHours % 12 || 12).toString().padStart(2, '0');
-      const formattedMinute = currentMinutes.toString().padStart(2, '0');
-      const ampm = isAm ? 'AM' : 'PM';
-      const currentTimeStr = `${formattedHour}:${formattedMinute} ${ampm}`;
+      const minuteKey = `${now.toDateString()}_${now.getHours()}_${now.getMinutes()}`;
 
       automations.forEach((auto) => {
         if (!auto.enabled) return;
 
-        const timeMatch = auto.schedule.toUpperCase().includes(currentTimeStr);
-        if (timeMatch) {
-          const lastRunKey = `sara_last_auto_run_${auto.id}_${now.toDateString()}_${currentTimeStr}`;
-          if (!localStorage.getItem(lastRunKey)) {
-            localStorage.setItem(lastRunKey, 'true');
-            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-              navigator.serviceWorker.controller.postMessage({
-                type: 'SHOW_ALARM_NOTIFICATION',
-                title: `⏰ ${auto.name} (SARA AI)`,
-                body: auto.action,
-              });
-            }
-            runAutomation(auto.id);
+        const isDue = checkScheduleMatch(auto.schedule, now, auto.targetTime, auto.targetTimestamp);
+        if (isDue) {
+          const runKey = `sara_alarm_triggered_${auto.id}_${minuteKey}`;
+          if (!localStorage.getItem(runKey)) {
+            localStorage.setItem(runKey, 'true');
+            triggerAlarmNow(auto);
           }
         }
       });
     };
 
-    const interval = setInterval(checkSchedule, 20000);
+    checkSchedule();
+    const interval = setInterval(checkSchedule, 2500);
     return () => clearInterval(interval);
   }, [automations]);
 
@@ -1519,6 +1621,12 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addAutomation,
         deleteAutomation,
         runAutomation,
+        activeRingingAlarm,
+        dismissAlarm,
+        snoozeAlarm,
+        triggerAlarmNow,
+        onOpenVoiceModal: onOpenVoiceModalCb,
+        setOnOpenVoiceModal: (cb: () => void) => setOnOpenVoiceModalCb(() => cb),
         activityLogs,
         addActivityLog,
         coinBalance,
