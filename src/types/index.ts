@@ -134,20 +134,6 @@ export interface CoinTransaction {
   timestamp: string;
 }
 
-export interface ScienceQueryResponse {
-  uniprot?: any;
-  alphafold?: any;
-  pubchem?: any;
-  articles?: Array<{
-    id: string;
-    title: string;
-    source: string;
-    pubdate: string;
-    authors: string;
-    url: string;
-  }>;
-  aiExplanation?: string;
-}
 
 export type MoodType = 'radiant' | 'happy' | 'calm' | 'tired' | 'stressed';
 

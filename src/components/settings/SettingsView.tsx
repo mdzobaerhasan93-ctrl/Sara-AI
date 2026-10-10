@@ -26,6 +26,7 @@ import {
   Layers,
   AlertCircle,
   X,
+  Zap,
 } from 'lucide-react';
 import { PersonalityPreset } from '../../types';
 import { GestureMapView } from './GestureMapView';
@@ -968,16 +969,16 @@ export const SettingsView: React.FC = () => {
               </div>
             </div>
 
-            {/* Science Skills API */}
+            {/* AI Automations Engine */}
             <div className="p-4 rounded-3xl glass-card border border-purple-500/20 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-full bg-purple-500/15 flex items-center justify-center text-purple-400">
-                    <KeyRound className="w-4 h-4" />
+                    <Zap className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-slate-100">DeepMind Science Skills</h4>
-                    <p className="text-[11px] text-slate-400">AlphaFold DB, UniProtKB, PubChem, PubMed</p>
+                    <h4 className="text-xs font-bold text-slate-100">AI Automations & Alarms</h4>
+                    <p className="text-[11px] text-slate-400">Background Worker & Proactive Task Engine</p>
                   </div>
                 </div>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950/80 border border-emerald-500/40 text-emerald-400">
@@ -985,8 +986,8 @@ export const SettingsView: React.FC = () => {
                 </span>
               </div>
               <div className="p-2.5 rounded-xl bg-black/40 border border-slate-800 flex items-center justify-between text-xs font-mono">
-                <span className="text-slate-400">Authoritative Public Biomedical APIs</span>
-                <span className="text-[10px] text-purple-400 font-sans font-bold">CONNECTED</span>
+                <span className="text-slate-400">Real Gemini AI Task Automation</span>
+                <span className="text-[10px] text-purple-400 font-sans font-bold">READY</span>
               </div>
             </div>
           </div>

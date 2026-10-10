@@ -84,7 +84,7 @@ const DAILY_HABITS = [
   { id: 'talk_sara', title: 'Talk with Sara ❤️', icon: MessageCircleHeart, color: 'text-pink-400' },
   { id: 'hydration', title: '2L Water 💧', icon: Droplets, color: 'text-cyan-400' },
   { id: 'exercise', title: 'Workout / Walk 🏃', icon: Activity, color: 'text-emerald-400' },
-  { id: 'learning', title: 'Science / Study 🧬', icon: BookOpen, color: 'text-purple-400' },
+  { id: 'learning', title: 'Study / Reading 📚', icon: BookOpen, color: 'text-purple-400' },
   { id: 'rest', title: 'Rest & Mindful ☕', icon: Coffee, color: 'text-amber-400' },
 ];
 

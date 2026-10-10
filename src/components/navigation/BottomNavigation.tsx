@@ -2,7 +2,7 @@ import React from 'react';
 import { Home, User, Heart, CircleDollarSign, Settings } from 'lucide-react';
 import { useSara } from '../../context/SaraContext';
 
-export type TabType = 'home' | 'avatar' | 'voice' | 'coins' | 'settings' | 'chat' | 'science';
+export type TabType = 'home' | 'avatar' | 'voice' | 'coins' | 'settings' | 'chat';
 
 interface BottomNavigationProps {
   activeTab: TabType;

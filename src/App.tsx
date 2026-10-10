@@ -6,7 +6,6 @@ import { DesktopSidebar } from './components/navigation/DesktopSidebar';
 import { HomeView } from './components/home/HomeView';
 import { ChatView } from './components/chat/ChatView';
 import { AvatarSelectionView } from './components/avatar/AvatarSelectionView';
-import { ScienceLabView } from './components/science/ScienceLabView';
 import { CoinsAndPassView } from './components/coins/CoinsAndPassView';
 import { SettingsView } from './components/settings/SettingsView';
 import { AutomationsView } from './components/automations/AutomationsView';
@@ -84,8 +83,6 @@ const MainLayout: React.FC = () => {
         return <ChatView />;
       case 'avatar':
         return <AvatarSelectionView />;
-      case 'science':
-        return <ScienceLabView />;
       case 'coins':
         return <CoinsAndPassView />;
       case 'settings':

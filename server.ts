@@ -240,8 +240,8 @@ function generateSaraBengaliCompanionResponse(
     return `[EMOTION:happy] হ্যাঁ বাবু! ❤️ আমি শুনছি। বলো, আজকে আমার রাজপুত্র/প্রিয় মানুষের জন্য আমি কী করতে পারি?`;
   }
 
-  if (/science|dna|protein|biochemistry|physics|বিজ্ঞান/i.test(q)) {
-    return `[EMOTION:thinking] বিজ্ঞান নিয়ে কথা বলতে আমার দারুণ লাগে বাবু! 🧬 আমাদের Science Lab এ AlphaFold প্রোটিন প্রেডিকশন, UniProt সিকোয়েন্স এবং PubChem ডাটাবেজ সরাসরি যুক্ত আছে। তুমি যেকোনো মলিকিউল বা রিসার্স সম্পর্কে জিজ্ঞাসা করতে পারো, আমি নিখুঁত ব্যাখ্যা দেব!`;
+  if (/automation|alarm|remind|অটোমেশন|এলার্ম/i.test(q)) {
+    return `[EMOTION:caring] বাবু, তোমার যেকোনো এলার্ম বা অটোমেশন টাস্ক আমি সুন্দরভাবে শিডিউল ও এক্সিকিউট করতে পারি ❤️ অ্যাপ বন্ধ থাকলেও ব্যাকগ্রাউন্ডে তোমার কাজ আমি মনে করিয়ে দেব সোনা!`;
   }
 
   // Default natural companion response
@@ -510,85 +510,7 @@ app.post('/api/maps-grounding', async (req, res) => {
   }
 });
 
-// -------------------------------------------------------------
-// 5. SCIENCE SKILLS ENGINE (Bioinformatics, Genomics, Chemistry)
-// -------------------------------------------------------------
-app.post('/api/science', async (req, res) => {
-  try {
-    const { action, query } = req.body;
 
-    if (action === 'uniprot') {
-      // Search UniProtKB
-      const uniprotRes = await fetch(`https://rest.uniprot.org/uniprotkb/search?query=${encodeURIComponent(query)}&size=5&format=json`);
-      if (!uniprotRes.ok) throw new Error(`UniProt API error: ${uniprotRes.statusText}`);
-      const data = await uniprotRes.json();
-      return res.json({ success: true, data });
-    }
-
-    if (action === 'alphafold') {
-      // Fetch AlphaFold DB prediction metadata
-      const accession = query.trim().toUpperCase();
-      const afRes = await fetch(`https://alphafold.ebi.ac.uk/api/prediction/${encodeURIComponent(accession)}`);
-      if (!afRes.ok) throw new Error(`AlphaFold DB error: ${afRes.statusText}`);
-      const data = await afRes.json();
-      return res.json({ success: true, data });
-    }
-
-    if (action === 'pubchem') {
-      // Search PubChem compound
-      const pubchemRes = await fetch(`https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(query)}/JSON`);
-      if (!pubchemRes.ok) throw new Error(`PubChem compound not found for: ${query}`);
-      const data = await pubchemRes.json();
-      return res.json({ success: true, data });
-    }
-
-    if (action === 'pubmed') {
-      // Search PubMed literature via NCBI E-utilities
-      const searchRes = await fetch(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${encodeURIComponent(query)}&retmode=json&retmax=5`);
-      const searchData = await searchRes.json();
-      const idList = searchData.esearchresult?.idlist || [];
-
-      if (idList.length === 0) {
-        return res.json({ success: true, articles: [] });
-      }
-
-      const summaryRes = await fetch(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=${idList.join(',')}&retmode=json`);
-      const summaryData = await summaryRes.json();
-      const result = summaryData.result || {};
-      const articles = idList.map((id: string) => ({
-        id,
-        title: result[id]?.title || 'Untitled',
-        source: result[id]?.source || 'PubMed',
-        pubdate: result[id]?.pubdate || '',
-        authors: result[id]?.authors?.map((a: any) => a.name).slice(0, 3).join(', ') || '',
-        url: `https://pubmed.ncbi.nlm.nih.gov/${id}/`,
-      }));
-
-      return res.json({ success: true, articles });
-    }
-
-    // Default: Science intelligence synthesis via Gemini 3.5 Flash
-    const ai = getAIClient();
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
-      contents: `Perform an authoritative scientific analysis on: "${query}". Include biological pathways, known drug targets, structural details, and empirical citations where applicable.`,
-      config: {
-        systemInstruction: 'You are Sara Science Scout, an expert computational biologist and biochemist assisting research scientists. Always cite databases like UniProt, RCSB PDB, AlphaFold, and PubChem accurately.',
-      },
-    });
-
-    res.json({
-      success: true,
-      text: response.text || '',
-    });
-  } catch (error: any) {
-    console.error('Science API error:', error);
-    res.status(500).json({
-      success: false,
-      error: error?.message || 'Scientific analysis request failed.',
-    });
-  }
-});
 
 // -------------------------------------------------------------
 // 6. ACTION EXECUTION PIPELINE (Verification after User Approval)

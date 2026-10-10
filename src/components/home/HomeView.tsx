@@ -22,6 +22,8 @@ import {
   Rotate3d,
   Camera,
   Zap,
+  Clock,
+  Loader2,
 } from 'lucide-react';
 import { useSara } from '../../context/SaraContext';
 import { AICoreOrb } from '../core/AICoreOrb';
@@ -32,7 +34,7 @@ import { WakeWordIndicator } from '../voice/WakeWordIndicator';
 import { GestureRecognitionModal } from '../gesture/GestureRecognitionModal';
 
 interface HomeViewProps {
-  onNavigate: (tab: TabType) => void;
+  onNavigate: (tab: TabType | 'memories' | 'automations' | 'permissions' | 'activity') => void;
   onOpenVoice: () => void;
 }
 
@@ -50,10 +52,23 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
     isDailyRewardClaimed,
     dailyRewardCountdown,
     dailyStreak,
+    automations,
+    toggleAutomation,
+    runAutomation,
   } = useSara();
 
   const [coreViewMode, setCoreViewMode] = useState<'3d' | 'orb'>('3d');
   const [showGestureModal, setShowGestureModal] = useState<boolean>(false);
+  const [runningAutoId, setRunningAutoId] = useState<string | null>(null);
+
+  const handleRunAuto = async (id: string) => {
+    try {
+      setRunningAutoId(id);
+      await runAutomation(id);
+    } finally {
+      setRunningAutoId(null);
+    }
+  };
 
   const handleTimeoutChange = (delta: number) => {
     const current = userProfile.autoTimeoutSeconds || 10;
@@ -111,24 +126,24 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
             <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
           </button>
 
-          {/* Module 3: Data */}
+          {/* Module 3: Data (Automations Section) */}
           <button
-            onClick={() => onNavigate('science')}
-            className="p-2.5 rounded-2xl glass-card border border-pink-500/20 hover:border-pink-500/40 flex items-center justify-between transition-all group active:scale-95 text-left"
+            onClick={() => onNavigate('automations' as any)}
+            className="p-2.5 rounded-2xl glass-card border border-cyan-500/30 hover:border-cyan-500/60 flex items-center justify-between transition-all group active:scale-95 text-left bg-gradient-to-r from-cyan-950/40 to-purple-950/20"
           >
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-cyan-500/15 flex items-center justify-center text-cyan-400 group-hover:scale-105">
-                <Send className="w-3.5 h-3.5" />
+              <div className="w-7 h-7 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:scale-105">
+                <Zap className="w-3.5 h-3.5" />
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-200">Data</p>
+                <p className="text-xs font-bold text-slate-100">Data</p>
                 <div className="flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-[10px] text-slate-400">Connected</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                  <span className="text-[10px] text-cyan-300">অটোমেশন</span>
                 </div>
               </div>
             </div>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+            <ChevronRight className="w-3.5 h-3.5 text-cyan-400" />
           </button>
 
           {/* Module 4: Stats */}
@@ -171,20 +186,20 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
             <ChevronRight className="w-3.5 h-3.5 text-pink-400" />
           </button>
 
-          {/* Module 6: Automations */}
+          {/* Module 6: Activity Logs */}
           <button
-            onClick={() => onNavigate('automations' as any)}
+            onClick={() => onNavigate('activity' as any)}
             className="p-2.5 rounded-2xl glass-card border border-pink-500/20 hover:border-pink-500/40 flex items-center justify-between transition-all group active:scale-95 text-left bg-gradient-to-r from-purple-950/40 to-pink-950/30"
           >
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-105">
-                <Zap className="w-3.5 h-3.5" />
+                <Activity className="w-3.5 h-3.5" />
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-100">Automations</p>
+                <p className="text-xs font-bold text-slate-100">Activity</p>
                 <div className="flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                  <span className="text-[10px] text-amber-300">Active</span>
+                  <span className="text-[10px] text-amber-300">Live Logs</span>
                 </div>
               </div>
             </div>
@@ -362,6 +377,108 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
             </div>
           </div>
         </div>
+      </div>
+
+      {/* DATA & AI AUTOMATION SECTION (অটোমেশন ও স্মার্ট এলার্ম) */}
+      <div className="p-4 rounded-3xl glass-card border border-cyan-500/25 space-y-3 bg-gradient-to-br from-[#080d1e]/80 via-[#0e0720]/80 to-[#120524]/80 shadow-[0_0_20px_rgba(6,182,212,0.1)]">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-400">
+              <Zap className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-slate-100 tracking-wider uppercase flex items-center gap-1.5">
+                <span>DATA · AI AUTOMATIONS</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-cyan-300 font-mono">
+                  {automations.filter((a) => a.enabled).length} ACTIVE
+                </span>
+              </h3>
+              <p className="text-[10px] text-slate-400">স্মার্ট শিডিউল, এলার্ম ও ব্যাকগ্রাউন্ড রিমাইন্ডার</p>
+            </div>
+          </div>
+          <button
+            onClick={() => onNavigate('automations' as any)}
+            className="px-2.5 py-1 rounded-xl text-[11px] font-bold text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 transition-all flex items-center gap-1"
+          >
+            <span>সব দেখুন</span>
+            <ChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+
+        {/* Quick Automations List */}
+        <div className="space-y-2">
+          {automations.slice(0, 3).map((item) => (
+            <div
+              key={item.id}
+              className={`p-3 rounded-2xl border transition-all flex items-center justify-between ${
+                item.enabled
+                  ? 'bg-slate-900/70 border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.1)]'
+                  : 'bg-slate-900/40 border-slate-800 opacity-60'
+              }`}
+            >
+              <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                <div
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                    item.enabled ? 'bg-cyan-500/20 text-cyan-400' : 'bg-slate-800 text-slate-500'
+                  }`}
+                >
+                  <Clock className="w-4 h-4" />
+                </div>
+                <div className="truncate">
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-bold text-slate-100 truncate">{item.name}</p>
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[10px] font-mono font-bold text-cyan-400 bg-cyan-950/60 px-1.5 py-0.2 rounded border border-cyan-500/30">
+                      {item.schedule}
+                    </span>
+                    <span className="text-[10px] text-slate-400 truncate max-w-[130px] sm:max-w-[200px]">
+                      {item.action}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions: Run Now + Toggle */}
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => handleRunAuto(item.id)}
+                  disabled={runningAutoId === item.id}
+                  title="এখনই রান করুন"
+                  className="w-8 h-8 rounded-xl bg-pink-500/15 hover:bg-pink-500/30 border border-pink-500/30 text-pink-400 flex items-center justify-center active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {runningAutoId === item.id ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Play className="w-3.5 h-3.5 fill-pink-400" />
+                  )}
+                </button>
+
+                <button
+                  onClick={() => toggleAutomation(item.id)}
+                  className={`w-9 h-5 rounded-full transition-colors relative p-0.5 ${
+                    item.enabled ? 'bg-cyan-500' : 'bg-slate-700'
+                  }`}
+                >
+                  <div
+                    className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                      item.enabled ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Add New / Manage CTA Button */}
+        <button
+          onClick={() => onNavigate('automations' as any)}
+          className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-cyan-950/40 via-purple-950/40 to-pink-950/40 border border-cyan-500/30 hover:border-cyan-500/60 text-slate-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all hover:text-white"
+        >
+          <Plus className="w-3.5 h-3.5 text-cyan-400" />
+          <span>নতুন এআই এলার্ম বা অটোমেশন সেট করুন</span>
+        </button>
       </div>
 
       {/* DAILY MOOD CHECK-IN & HABIT TRACKER (RECHARTS VISUALIZATION) */}

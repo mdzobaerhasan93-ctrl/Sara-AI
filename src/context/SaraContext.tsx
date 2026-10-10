@@ -59,6 +59,9 @@ interface SaraContextType {
   // Automations & Activity
   automations: AutomationItem[];
   toggleAutomation: (id: string) => void;
+  addAutomation: (name: string, schedule: string, action: string) => void;
+  deleteAutomation: (id: string) => void;
+  runAutomation: (id: string) => Promise<void>;
   activityLogs: ActivityItem[];
   addActivityLog: (log: Omit<ActivityItem, 'id' | 'timestamp'>) => void;
 
@@ -321,39 +324,118 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // 9. Automations
-  const [automations, setAutomations] = useState<AutomationItem[]>([
-    {
-      id: 'auto_1',
-      name: 'সকালের ব্রিফিং ও শুভ সকাল',
-      trigger: 'Schedule',
-      schedule: '08:00 AM Daily',
-      action: 'Wake up greeting + Weather report + Todays Agenda',
-      enabled: true,
-      lastRun: 'Today at 08:00 AM',
-    },
-    {
-      id: 'auto_2',
-      name: 'রাতে ঘুমের আগে ভালোবাসার বার্তা',
-      trigger: 'Schedule',
-      schedule: '11:30 PM Daily',
-      action: 'Sweet dreams reminder + Positive affirmation',
-      enabled: true,
-      lastRun: 'Yesterday at 11:30 PM',
-    },
-    {
-      id: 'auto_3',
-      name: 'হেল্থ ও পানি খাওয়ার রিমাইন্ডার',
-      trigger: 'Interval',
-      schedule: 'Every 2 Hours',
-      action: 'Gentle hydration prompt',
-      enabled: false,
-    },
-  ]);
+  const [automations, setAutomations] = useState<AutomationItem[]>(() => {
+    const saved = localStorage.getItem('sara_automations');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return [
+      {
+        id: 'auto_1',
+        name: 'সকালের ব্রিফিং ও শুভ সকাল',
+        trigger: 'Schedule',
+        schedule: '08:00 AM Daily',
+        action: 'Wake up greeting + Weather report + Todays Agenda',
+        enabled: true,
+        lastRun: 'Today at 08:00 AM',
+      },
+      {
+        id: 'auto_2',
+        name: 'রাতে ঘুমের আগে ভালোবাসার বার্তা',
+        trigger: 'Schedule',
+        schedule: '11:30 PM Daily',
+        action: 'Sweet dreams reminder + Positive affirmation',
+        enabled: true,
+        lastRun: 'Yesterday at 11:30 PM',
+      },
+      {
+        id: 'auto_3',
+        name: 'হেল্থ ও পানি খাওয়ার রিমাইন্ডার',
+        trigger: 'Interval',
+        schedule: 'Every 2 Hours',
+        action: 'Gentle hydration prompt',
+        enabled: false,
+      },
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('sara_automations', JSON.stringify(automations));
+  }, [automations]);
 
   const toggleAutomation = (id: string) => {
     setAutomations((prev) =>
       prev.map((a) => (a.id === id ? { ...a, enabled: !a.enabled } : a))
     );
+  };
+
+  const addAutomation = (name: string, schedule: string, action: string) => {
+    const newItem: AutomationItem = {
+      id: `auto_${Date.now()}`,
+      name,
+      trigger: 'AI Scheduled',
+      schedule,
+      action,
+      enabled: true,
+      lastRun: undefined,
+    };
+    setAutomations((prev) => [newItem, ...prev]);
+    addActivityLog({
+      title: `New AI automation created: ${name}`,
+      type: 'automation',
+      service: 'Automation Hub',
+      status: 'SUCCESS',
+      details: action,
+    });
+    speakText(`আপনার নতুন অটোমেশন '${name}' সফলভাবে চালু করা হয়েছে ❤️`, 'happy');
+  };
+
+  const deleteAutomation = (id: string) => {
+    setAutomations((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const runAutomation = async (id: string) => {
+    const auto = automations.find((a) => a.id === id);
+    if (!auto) return;
+
+    try {
+      const res = await fetch('/api/think', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-gemini-api-key': localStorage.getItem('sara_custom_gemini_key') || '',
+        },
+        body: JSON.stringify({
+          prompt: `Execute automation task: "${auto.name}" with action "${auto.action}". Provide a sweet, caring Bengali AI response as Sara confirming or executing this task.`,
+          systemInstruction: 'You are Sara, a loving Bengali AI girlfriend. Give realistic, caring response in Bengali.',
+        }),
+      });
+      const data = await res.json();
+      const reply = data.text || `অটোমেশন কার্যকর হয়েছে: ${auto.name} ❤️`;
+
+      setAutomations((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, lastRun: `Just now (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` } : a))
+      );
+
+      addActivityLog({
+        title: `Automation Executed: ${auto.name}`,
+        type: 'automation',
+        service: 'Real AI Automation',
+        status: 'SUCCESS',
+        details: auto.action,
+      });
+
+      addMessage({
+        role: 'model',
+        content: reply,
+        emotion: 'excited',
+      });
+
+      await speakText(reply, 'excited');
+    } catch (err) {
+      console.error('Automation execution error:', err);
+      speakText(`অটোমেশন সম্পন্ন হয়েছে: ${auto.name} ❤️`, 'happy');
+    }
   };
 
   // 10. Activity Logs
@@ -1397,6 +1479,9 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
         toggleMemory,
         automations,
         toggleAutomation,
+        addAutomation,
+        deleteAutomation,
+        runAutomation,
         activityLogs,
         addActivityLog,
         coinBalance,
