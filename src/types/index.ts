@@ -89,7 +89,7 @@ export interface ChatMessage {
 
 export interface MemoryItem {
   id: string;
-  category: 'Personal' | 'Preferences' | 'Projects' | 'Important Dates' | 'Work' | 'Custom';
+  category: 'Personal' | 'Preferences' | 'Projects' | 'Important Dates' | 'Work' | 'Custom' | 'Journal';
   content: string;
   createdAt: string;
   active: boolean;
