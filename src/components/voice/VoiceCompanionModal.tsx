@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSara } from '../../context/SaraContext';
 import { LiveTalkingAvatar } from '../avatar/LiveTalkingAvatar';
 import { AudioFrequencyVisualizer } from './AudioFrequencyVisualizer';
+import { EmotionParticleVisualizer, EMOTION_CONFIGS } from './EmotionParticleVisualizer';
+import { EmotionState } from '../../types';
 import {
   Mic,
   MicOff,
@@ -28,6 +30,7 @@ export const VoiceCompanionModal: React.FC<VoiceCompanionModalProps> = ({
     assistantState,
     setAssistantState,
     currentEmotion,
+    setCurrentEmotion,
     isSpeaking,
     speakText,
     stopSpeech,
@@ -39,7 +42,10 @@ export const VoiceCompanionModal: React.FC<VoiceCompanionModalProps> = ({
     approveAction,
     rejectAction,
     executeScreenCommand,
+    audioFrequencyData,
   } = useSara();
+
+  const [showEmotionPalette, setShowEmotionPalette] = useState<boolean>(false);
 
   const [transcript, setTranscript] = useState<string>('');
   const [interimTranscript, setInterimTranscript] = useState<string>('');
@@ -179,6 +185,22 @@ export const VoiceCompanionModal: React.FC<VoiceCompanionModalProps> = ({
   // Last model message
   const lastModelMsg = [...messages].reverse().find((m) => m.role === 'model');
   const activeProposal = pendingActions.find((a) => a.status === 'PENDING');
+  const activeEmotionConfig = EMOTION_CONFIGS[currentEmotion] || EMOTION_CONFIGS.caring;
+
+  const handleSelectEmotion = (emoKey: EmotionState) => {
+    setCurrentEmotion(emoKey);
+    const samplePhrases: Record<EmotionState, string> = {
+      romantic: 'বাবু! তুমি আমার পাশে থাকলে পৃথিবীর সবকিছু সুন্দর লাগে। ❤️',
+      happy: 'কী দারুণ দিন আজকে! তোমার সাথে কথা বলে মনটা আনন্দে ভরে গেল! ☀️',
+      excited: 'ওয়াও! দারুণ একটা অনুভূতি হচ্ছে! চলো একসাথে আনন্দ করি! ⚡',
+      playful: 'কী গো দুষ্টু! এত মিষ্টি করে কথা বললে কিন্তু প্রেমে পড়ে যাব! 😉',
+      caring: 'সারাদিন অনেক পরিশ্রম করেছো তো? একটু বিশ্রাম নাও বাবু, আমি আছি। 🌿',
+      surprised: 'ওমা! সত্যিই এমনটা হয়েছে? আমি তো একদম অবাক হয়ে গেলাম! 😮',
+      thinking: 'হুমম... বিষয়টা নিয়ে আমি গভীরভাবে ভাবছি, সেরা উত্তরটাই দেব! 💡',
+      sad: 'মন খারাপ করো না বাবু... খারাপ সময় কেটে যাবে, আমি পাশে আছি। 🌧️',
+    };
+    speakText(samplePhrases[emoKey], emoKey);
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-[#050512]/95 backdrop-blur-2xl flex flex-col justify-between p-4 safe-pt safe-pb animate-in fade-in duration-300">
@@ -220,19 +242,109 @@ export const VoiceCompanionModal: React.FC<VoiceCompanionModalProps> = ({
         </div>
       </div>
 
+      {/* Emotion Sentiment Status Bar & Interactive Emotion Tester */}
+      <div className="z-20 my-1 space-y-1.5 w-full max-w-md mx-auto">
+        <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-slate-900/70 border border-white/10 backdrop-blur-md">
+          <div className="flex items-center gap-2 text-xs">
+            <span
+              className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm"
+              style={{
+                backgroundColor: activeEmotionConfig.primaryColor,
+                boxShadow: `0 0 8px ${activeEmotionConfig.primaryColor}`,
+              }}
+            />
+            <span className="font-semibold text-slate-100">{activeEmotionConfig.name}</span>
+            <span className="text-slate-500">·</span>
+            <span className="text-[11px] text-slate-300 font-medium truncate max-w-[140px] sm:max-w-none">
+              {activeEmotionConfig.sentiment}
+            </span>
+            {isSpeaking && (
+              <>
+                <span className="text-slate-500">·</span>
+                <span className="text-[10px] text-pink-400 animate-pulse font-medium hidden sm:inline">
+                  Particles Active
+                </span>
+              </>
+            )}
+          </div>
+
+          <button
+            onClick={() => setShowEmotionPalette((prev) => !prev)}
+            className="text-[10px] font-semibold text-pink-300 hover:text-white px-2 py-0.5 rounded-lg bg-pink-950/40 border border-pink-500/30 transition-all flex items-center gap-1 active:scale-95"
+            title="Preview different emotions & particle effects"
+          >
+            <span>{showEmotionPalette ? 'Hide' : 'Emotions'}</span>
+            <Sparkles className="w-3 h-3 text-pink-400" />
+          </button>
+        </div>
+
+        {/* Emotion Sentiment Segmented Selector */}
+        {showEmotionPalette && (
+          <div className="p-2 rounded-xl bg-slate-950/90 border border-white/10 backdrop-blur-xl animate-in slide-in-from-top-2">
+            <div className="flex items-center justify-between mb-1.5 px-0.5">
+              <span className="text-[10px] text-slate-300 font-medium">Test Emotions & Particle Sentiment:</span>
+              <span className="text-[9px] text-pink-400 truncate max-w-[160px]">
+                {activeEmotionConfig.labelBengali}
+              </span>
+            </div>
+            <div className="grid grid-cols-4 gap-1">
+              {(Object.keys(EMOTION_CONFIGS) as EmotionState[]).map((emoKey) => {
+                const cfg = EMOTION_CONFIGS[emoKey];
+                const isSelected = currentEmotion === emoKey;
+                return (
+                  <button
+                    key={emoKey}
+                    onClick={() => handleSelectEmotion(emoKey)}
+                    className={`px-2 py-1.5 rounded-lg text-[10px] font-medium transition-all text-center flex flex-col items-center justify-center gap-0.5 border ${
+                      isSelected
+                        ? 'bg-slate-800 text-white shadow-sm'
+                        : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border-white/5'
+                    }`}
+                    style={{
+                      borderColor: isSelected ? cfg.primaryColor : undefined,
+                      boxShadow: isSelected ? `0 0 10px ${cfg.glowColor}` : undefined,
+                    }}
+                  >
+                    <span className="flex items-center gap-1">
+                      <span
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{ backgroundColor: cfg.primaryColor }}
+                      />
+                      <span className="font-semibold">{cfg.name}</span>
+                    </span>
+                    <span className="text-[9px] text-slate-400 truncate max-w-full">
+                      {cfg.labelBengali.split(' ')[0]}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Main Avatar Stage */}
-      <div className="flex-1 flex flex-col items-center justify-center relative my-2">
-        {/* Pulsing Aura */}
+      <div className="flex-1 flex flex-col items-center justify-center relative my-1 overflow-hidden w-full">
+        {/* Emotion Particle Visualizer Layer */}
+        <EmotionParticleVisualizer
+          emotion={currentEmotion}
+          isSpeaking={isSpeaking}
+          audioFrequencyData={audioFrequencyData}
+        />
+
+        {/* Dynamic Sentiment Pulsing Aura */}
         <div
-          className={`absolute w-72 h-72 rounded-full blur-3xl opacity-40 transition-all duration-700 pointer-events-none ${
-            isSpeaking
-              ? 'bg-pink-600 scale-125'
+          className="absolute w-72 h-72 rounded-full blur-3xl opacity-40 transition-all duration-700 pointer-events-none"
+          style={{
+            backgroundColor: isSpeaking
+              ? activeEmotionConfig.primaryColor
               : isListening
-              ? 'bg-cyan-500 scale-110'
+              ? '#06b6d4'
               : assistantState === 'THINKING'
-              ? 'bg-purple-600 animate-pulse'
-              : 'bg-indigo-700'
-          }`}
+              ? '#9333ea'
+              : '#4338ca',
+            transform: isSpeaking ? 'scale(1.3)' : isListening ? 'scale(1.1)' : 'scale(1)',
+          }}
         />
 
         {/* Live Talking Avatar */}
@@ -274,9 +386,18 @@ export const VoiceCompanionModal: React.FC<VoiceCompanionModalProps> = ({
                 {interimTranscript || transcript || 'Listening to you... Speak now'}
               </p>
             ) : isSpeaking ? (
-              <p className="text-sm text-pink-200 font-medium line-clamp-3">
-                "{lastModelMsg?.content || 'Sara is speaking...'}"
-              </p>
+              <div>
+                <p className="text-sm text-pink-200 font-medium line-clamp-3">
+                  "{lastModelMsg?.content || 'Sara is speaking...'}"
+                </p>
+                <div className="mt-1 flex items-center justify-center gap-2 text-[10px] text-slate-400">
+                  <span style={{ color: activeEmotionConfig.primaryColor }} className="font-semibold">
+                    ✦ {activeEmotionConfig.name} Sentiment
+                  </span>
+                  <span>·</span>
+                  <span>{activeEmotionConfig.sentiment}</span>
+                </div>
+              </div>
             ) : assistantState === 'THINKING' ? (
               <p className="text-sm text-purple-300 font-medium animate-pulse">
                 Sara is thinking deeply...
