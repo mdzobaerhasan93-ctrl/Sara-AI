@@ -889,6 +889,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
     const q = command.toLowerCase();
+    // 1. Web Apps / Social
     if (q.includes('facebook') || q.includes('ফেসবুক')) {
       if (q.includes('status') || q.includes('স্ট্যাটাস')) {
         speakText('ফেসবুকে সফলভাবে তোমার স্ট্যাটাস পোস্ট করা হয়েছে বাবু! ❤️', 'happy');
@@ -922,6 +923,21 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       return true;
     }
+
+    // 2. Browser-Launchable System Tools (via URI schemes where supported)
+    if (q.includes('calculator') || q.includes('ক্যালকুলেটর')) {
+       // Note: Browser cannot directly launch native calculator.exe, but can offer web-based alternatives.
+       window.open('https://www.google.com/search?q=calculator', '_blank');
+       speakText('অনলাইন ক্যালকুলেটর ওপেন করে দেওয়া হয়েছে বাবু! 🧮', 'happy');
+       return true;
+    }
+    if (q.includes('notepad') || q.includes('নোটপ্যাড')) {
+       window.open('https://www.google.com/search?q=online+notepad', '_blank');
+       speakText('অনলাইন নোটপ্যাড ওপেন করে দেওয়া হয়েছে সোনা! 📝', 'happy');
+       return true;
+    }
+
+    // 3. General Search & Navigation
     if (q.includes('movie') || q.includes('মুভি') || q.includes('চলচ্চিত্র') || q.includes('সার্চ')) {
       window.open('https://www.google.com/search?q=' + encodeURIComponent(command), '_blank');
       speakText('মুভি বা তথ্য সার্চ করে দেওয়া হয়েছে সোনা! 🍿', 'excited');
@@ -933,6 +949,13 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       return true;
     }
+
+    // 4. Fallback for Native Apps
+    if (q.includes('vscode') || q.includes('vs code') || q.includes('code editor')) {
+       speakText('বাবু, ব্রাউজার থেকে সরাসরি VS Code ওপেন করা যায় না। এটি পিসি থেকে ম্যানুয়ালি ওপেন করে নাও। 💻', 'caring');
+       return true;
+    }
+
     return false;
   };
 
