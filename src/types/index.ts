@@ -95,6 +95,8 @@ export interface MemoryItem {
   active: boolean;
 }
 
+export type AutomationCategory = 'Work' | 'Health' | 'Social' | 'Routine' | 'Personal' | string;
+
 export interface AutomationItem {
   id: string;
   name: string;
@@ -102,6 +104,7 @@ export interface AutomationItem {
   schedule: string;
   action: string;
   enabled: boolean;
+  category?: AutomationCategory;
   lastRun?: string;
   targetTime?: string;
   targetTimestamp?: number;

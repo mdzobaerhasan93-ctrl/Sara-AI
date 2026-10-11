@@ -60,7 +60,8 @@ interface SaraContextType {
   // Automations & Alarms
   automations: AutomationItem[];
   toggleAutomation: (id: string) => void;
-  addAutomation: (name: string, schedule: string, action: string, targetTime?: string, targetTimestamp?: number) => void;
+  addAutomation: (name: string, schedule: string, action: string, targetTime?: string, targetTimestamp?: number, category?: string) => void;
+  updateAutomationCategory: (id: string, category: string) => void;
   deleteAutomation: (id: string) => void;
   runAutomation: (id: string) => Promise<void>;
   activeRingingAlarm: AutomationItem | null;
@@ -337,11 +338,18 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const parsed: AutomationItem[] = JSON.parse(saved);
         // Ensure default initial auto_1/auto_2 don't auto-ring on launch unless explicitly set
-        return parsed.map((a) => {
-          if ((a.id === 'auto_1' || a.id === 'auto_2') && !localStorage.getItem('sara_user_enabled_' + a.id)) {
-            return { ...a, enabled: false };
+        return parsed.map((a: AutomationItem) => {
+          let updated = { ...a };
+          if (!updated.category) {
+            if (updated.id === 'auto_1') updated.category = 'Routine';
+            else if (updated.id === 'auto_2') updated.category = 'Social';
+            else if (updated.id === 'auto_3') updated.category = 'Health';
+            else updated.category = 'Routine';
           }
-          return a;
+          if ((updated.id === 'auto_1' || updated.id === 'auto_2') && !localStorage.getItem('sara_user_enabled_' + updated.id)) {
+            updated.enabled = false;
+          }
+          return updated;
         });
       } catch (e) {}
     }
@@ -354,6 +362,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
         targetTime: '08:00',
         action: 'Wake up greeting + Weather report + Todays Agenda',
         enabled: false,
+        category: 'Routine',
         lastRun: 'Yesterday at 08:00 AM',
       },
       {
@@ -364,6 +373,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
         targetTime: '23:30',
         action: 'Sweet dreams reminder + Positive affirmation',
         enabled: false,
+        category: 'Social',
         lastRun: 'Yesterday at 11:30 PM',
       },
       {
@@ -373,6 +383,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
         schedule: 'Every 2 Hours',
         action: 'Gentle hydration prompt',
         enabled: false,
+        category: 'Health',
       },
     ];
   });
@@ -404,7 +415,8 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
     schedule: string,
     action: string,
     targetTime?: string,
-    targetTimestamp?: number
+    targetTimestamp?: number,
+    category?: string
   ) => {
     alarmAudio.unlock();
     const newItem: AutomationItem = {
@@ -414,6 +426,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
       schedule,
       action,
       enabled: true,
+      category: category || 'Routine',
       targetTime,
       targetTimestamp,
       lastRun: undefined,
@@ -428,6 +441,12 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
       details: action,
     });
     speakText(`আপনার নতুন অ্যালার্ম ও অটোমেশন '${name}' সেট করা হয়েছে ❤️`, 'happy');
+  };
+
+  const updateAutomationCategory = (id: string, category: string) => {
+    setAutomations((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, category } : a))
+    );
   };
 
   const deleteAutomation = (id: string) => {
@@ -1619,6 +1638,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
         automations,
         toggleAutomation,
         addAutomation,
+        updateAutomationCategory,
         deleteAutomation,
         runAutomation,
         activeRingingAlarm,

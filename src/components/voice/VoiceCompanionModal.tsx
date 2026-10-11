@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSara } from '../../context/SaraContext';
 import { LiveTalkingAvatar } from '../avatar/LiveTalkingAvatar';
+import { AudioFrequencyVisualizer } from './AudioFrequencyVisualizer';
 import {
   Mic,
   MicOff,
@@ -294,6 +295,13 @@ export const VoiceCompanionModal: React.FC<VoiceCompanionModalProps> = ({
         {speechError && (
           <p className="text-[11px] text-amber-400 text-center">{speechError}</p>
         )}
+
+        {/* Real-Time Audio Frequency Visualizer */}
+        <AudioFrequencyVisualizer
+          isActive={isListening}
+          isSpeaking={isSpeaking}
+          barCount={24}
+        />
 
         {/* Central Giant Voice Control Button */}
         <div className="flex items-center justify-center gap-4">
