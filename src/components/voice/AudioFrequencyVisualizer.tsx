@@ -26,6 +26,7 @@ export const AudioFrequencyVisualizer: React.FC<AudioFrequencyVisualizerProps> =
   const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const peakHoldRef = useRef<number[]>(new Array(barCount).fill(0));
+  const wasActiveRef = useRef<boolean>(false);
 
   useEffect(() => {
     let isCancelled = false;
@@ -62,11 +63,15 @@ export const AudioFrequencyVisualizer: React.FC<AudioFrequencyVisualizerProps> =
     };
 
     if (!isActive) {
-      stopAudio();
-      // Reset to calm resting ambient state
-      setFrequencies(new Array(barCount).fill(10));
+      if (wasActiveRef.current) {
+        stopAudio();
+        setFrequencies(new Array(barCount).fill(10));
+        wasActiveRef.current = false;
+      }
       return;
     }
+
+    wasActiveRef.current = true;
 
     const startAudioCapture = async () => {
       try {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { SaraProvider, useSara } from './context/SaraContext';
 import { Header } from './components/layout/Header';
 import { BottomNavigation, TabType } from './components/navigation/BottomNavigation';
@@ -22,17 +22,20 @@ const MainLayout: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType | 'memories' | 'automations' | 'permissions' | 'activity'>('home');
   const [isVoiceOpen, setIsVoiceOpen] = useState<boolean>(false);
 
+  const handleOpenVoice = useCallback(() => {
+    setIsVoiceOpen(true);
+  }, []);
+
   useEffect(() => {
-    setOnOpenVoiceModal(() => setIsVoiceOpen(true));
-  }, [setOnOpenVoiceModal]);
+    setOnOpenVoiceModal(handleOpenVoice);
+  }, [setOnOpenVoiceModal, handleOpenVoice]);
 
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState<boolean>(false);
   const [wakeWordAlert, setWakeWordAlert] = useState<string | null>(null);
 
-  // Background Hands-Free Wake Word Detection System
-  const { isHandsFreeActive, toggleHandsFree, isSupported, lastDetected } = useWakeWord({
-    wakeWords: [
+  const wakeWordsList = useMemo(
+    () => [
       userProfile.wakeWord || 'hey sara',
       'hey sara',
       'sara',
@@ -41,12 +44,23 @@ const MainLayout: React.FC = () => {
       'hey zara',
       'zara',
     ],
-    onWakeWordDetected: (word) => {
+    [userProfile.wakeWord]
+  );
+
+  const handleWakeWordDetected = useCallback(
+    (word: string) => {
       setWakeWordAlert(`"${word}" detected! Opening Sara hands-free...`);
       setIsVoiceOpen(true);
       speakText('হ্যাঁ বাবু! আমি শুনছি ❤️ কী সাহায্য করতে পারি?', 'romantic');
       setTimeout(() => setWakeWordAlert(null), 3000);
     },
+    [speakText]
+  );
+
+  // Background Hands-Free Wake Word Detection System
+  const { isHandsFreeActive, toggleHandsFree, isSupported, lastDetected } = useWakeWord({
+    wakeWords: wakeWordsList,
+    onWakeWordDetected: handleWakeWordDetected,
     isVoiceModalOpen: isVoiceOpen,
   });
 

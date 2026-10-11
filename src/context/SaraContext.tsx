@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import {
   AssistantState,
   EmotionState,
@@ -499,7 +499,17 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Ringing Alarm State
   const [activeRingingAlarm, setActiveRingingAlarm] = useState<AutomationItem | null>(null);
-  const [onOpenVoiceModalCb, setOnOpenVoiceModalCb] = useState<(() => void) | undefined>(undefined);
+  const onOpenVoiceModalRef = useRef<(() => void) | undefined>(undefined);
+
+  const setOnOpenVoiceModal = useCallback((cb: () => void) => {
+    onOpenVoiceModalRef.current = cb;
+  }, []);
+
+  const onOpenVoiceModal = useCallback(() => {
+    if (onOpenVoiceModalRef.current) {
+      onOpenVoiceModalRef.current();
+    }
+  }, []);
 
   // Stop any lingering audio on mount so app launch never auto-plays sound
   useEffect(() => {
@@ -1645,8 +1655,8 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
         dismissAlarm,
         snoozeAlarm,
         triggerAlarmNow,
-        onOpenVoiceModal: onOpenVoiceModalCb,
-        setOnOpenVoiceModal: (cb: () => void) => setOnOpenVoiceModalCb(() => cb),
+        onOpenVoiceModal,
+        setOnOpenVoiceModal,
         activityLogs,
         addActivityLog,
         coinBalance,

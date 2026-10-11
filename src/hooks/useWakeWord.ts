@@ -20,6 +20,10 @@ export function useWakeWord({
 
   const recognitionRef = useRef<any>(null);
   const isRunningRef = useRef<boolean>(false);
+  const onWakeWordDetectedRef = useRef(onWakeWordDetected);
+  onWakeWordDetectedRef.current = onWakeWordDetected;
+  const wakeWordsRef = useRef(wakeWords);
+  wakeWordsRef.current = wakeWords;
 
   // Clear any legacy auto-active flag from localStorage
   useEffect(() => {
@@ -78,7 +82,7 @@ export function useWakeWord({
       }
 
       let matchedWord: string | null = null;
-      for (const word of wakeWords) {
+      for (const word of wakeWordsRef.current) {
         if (fullTranscript.includes(word.toLowerCase().trim())) {
           matchedWord = word;
           break;
@@ -96,7 +100,7 @@ export function useWakeWord({
         } catch (e) {}
         isRunningRef.current = false;
         setIsHandsFreeActive(false); // Stop once detected
-        onWakeWordDetected(matchedWord);
+        onWakeWordDetectedRef.current(matchedWord);
       }
     };
 
@@ -123,7 +127,7 @@ export function useWakeWord({
         isRunningRef.current = false;
       }
     };
-  }, [isVoiceModalOpen, isHandsFreeActive, enabled, wakeWords, onWakeWordDetected]);
+  }, [isVoiceModalOpen, isHandsFreeActive, enabled]);
 
   return {
     isHandsFreeActive,
