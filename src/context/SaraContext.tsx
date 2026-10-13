@@ -890,55 +890,36 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
     const q = command.toLowerCase();
-    // 1. Web Apps / Social
-    if (q.includes('facebook') || q.includes('ফেসবুক')) {
-      if (q.includes('status') || q.includes('স্ট্যাটাস')) {
-        speakText('ফেসবুকে সফলভাবে তোমার স্ট্যাটাস পোস্ট করা হয়েছে বাবু! ❤️', 'happy');
+    
+    // Check if it's an "Open [App]" command
+    const openMatch = q.match(/(open|ওপেন)\s+(.+)/);
+    if (openMatch) {
+      const appName = openMatch[2].trim();
+      const app = AppInventoryService.getAppByName(appName);
+      
+      if (app) {
+        // Here we would check permissions if needed, for now just launch
+        // In a real Android app, we would bridge to native launch code here.
+        // For web, we use window.open with the launch URI or a fallback search.
+        
+        // Add approval step if it's a new or sensitive app
+        const actionId = `launch_${app.id}_${Date.now()}`;
+        
+        // Simulating approval for this demo
+        speakText(`${app.name} ওপেন করা হচ্ছে সোনা! ✨`, 'happy');
+        window.open(app.launchUri, '_blank');
+        
         addActivityLog({
-          title: 'Screen Control: Facebook Status Posted',
+          title: `Screen Control: Opened ${app.name}`,
           type: 'action',
           service: 'Device Screen Control',
           status: 'SUCCESS',
-          details: 'Posted status via voice command.',
         });
-      } else {
-        window.open('https://www.facebook.com', '_blank');
-        speakText('ফেসবুক ওপেন করে দেওয়া হয়েছে সোনা! ✨', 'happy');
-        addActivityLog({
-          title: 'Screen Control: Opened Facebook',
-          type: 'action',
-          service: 'Device Screen Control',
-          status: 'SUCCESS',
-        });
+        return true;
       }
-      return true;
-    }
-    if (q.includes('youtube') || q.includes('ইউটিউব')) {
-      window.open('https://www.youtube.com', '_blank');
-      speakText('ইউটিউব ওপেন করা হয়েছে বাবু! কী দেখতে চাও বলো? 🎬', 'playful');
-      addActivityLog({
-        title: 'Screen Control: Opened YouTube',
-        type: 'action',
-        service: 'Device Screen Control',
-        status: 'SUCCESS',
-      });
-      return true;
     }
 
-    // 2. Browser-Launchable System Tools (via URI schemes where supported)
-    if (q.includes('calculator') || q.includes('ক্যালকুলেটর')) {
-       // Note: Browser cannot directly launch native calculator.exe, but can offer web-based alternatives.
-       window.open('https://www.google.com/search?q=calculator', '_blank');
-       speakText('অনলাইন ক্যালকুলেটর ওপেন করে দেওয়া হয়েছে বাবু! 🧮', 'happy');
-       return true;
-    }
-    if (q.includes('notepad') || q.includes('নোটপ্যাড')) {
-       window.open('https://www.google.com/search?q=online+notepad', '_blank');
-       speakText('অনলাইন নোটপ্যাড ওপেন করে দেওয়া হয়েছে সোনা! 📝', 'happy');
-       return true;
-    }
-
-    // 3. General Search & Navigation
+    // Fallback for general search
     if (q.includes('movie') || q.includes('মুভি') || q.includes('চলচ্চিত্র') || q.includes('সার্চ')) {
       window.open('https://www.google.com/search?q=' + encodeURIComponent(command), '_blank');
       speakText('মুভি বা তথ্য সার্চ করে দেওয়া হয়েছে সোনা! 🍿', 'excited');
@@ -949,12 +930,6 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
         status: 'SUCCESS',
       });
       return true;
-    }
-
-    // 4. Fallback for Native Apps
-    if (q.includes('vscode') || q.includes('vs code') || q.includes('code editor')) {
-       speakText('বাবু, ব্রাউজার থেকে সরাসরি VS Code ওপেন করা যায় না। এটি পিসি থেকে ম্যানুয়ালি ওপেন করে নাও। 💻', 'caring');
-       return true;
     }
 
     return false;
