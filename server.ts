@@ -531,6 +531,14 @@ app.post('/api/action-execute', async (req, res) => {
       resultMessage = `GitHub workflow triggered on repository ${details?.repo || 'main'}. Dispatch ID: #RUN-${Math.floor(Math.random() * 90000 + 10000)}.`;
     } else if (action === 'deploy_project') {
       resultMessage = `Deployment pipeline initiated. Build artifacts validated. Live URL provisioned.`;
+    } else if (action === 'launch_app') {
+      const appName = details?.appName?.toLowerCase();
+      const allowlist = ['notepad', 'calculator', 'chrome', 'vscode', 'explorer', 'facebook', 'youtube', 'instagram'];
+      if (allowlist.includes(appName)) {
+        resultMessage = `Launching ${appName}... SARA has initiated the system launch command for ${appName}.`;
+      } else {
+        throw new Error(`Application "${appName}" not found or unauthorized to launch.`);
+      }
     } else {
       resultMessage = `Action "${action}" successfully executed on service ${service}.`;
     }
