@@ -15,6 +15,7 @@ import {
   AppPermissions,
 } from '../types';
 import { alarmAudio, checkScheduleMatch } from '../utils/alarmSound';
+import { AppInventoryService } from '../services/AppInventoryService';
 
 interface SaraContextType {
   // Assistant Status
@@ -1636,6 +1637,23 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [cpuPower] = useState<number>(98);
   const [networkConnected] = useState<boolean>(true);
   const [systemOperational] = useState<boolean>(true);
+
+  // 15. Native App Inventory
+  const [availableApps] = useState(() => AppInventoryService.getAllApps());
+
+  const executeAppCommand = async (command: string) => {
+    const appNameMatch = command.match(/open\s+(.+)/i);
+    if (appNameMatch) {
+      const appName = appNameMatch[1].trim();
+      const app = AppInventoryService.getAppByName(appName);
+      if (app) {
+        console.log(`Launching app: ${app.name} via ${app.launchUri}`);
+        // Integration with action pipeline would go here
+      } else {
+        addMessage({ role: 'model', content: `দুঃখিত, আমি "${appName}" অ্যাপটি খুঁজে পাচ্ছি না।`, emotion: 'sad' });
+      }
+    }
+  };
 
   return (
     <SaraContext.Provider
