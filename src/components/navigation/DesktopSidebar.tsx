@@ -10,12 +10,13 @@ import {
   Activity,
   Settings,
   Heart,
+  Smartphone,
 } from 'lucide-react';
 import { TabType } from './BottomNavigation';
 import { useSara } from '../../context/SaraContext';
 
 interface DesktopSidebarProps {
-  activeTab: TabType | 'memories' | 'automations' | 'permissions' | 'activity';
+  activeTab: TabType | 'memories' | 'automations' | 'permissions' | 'activity' | 'apps';
   onTabChange: (tab: any) => void;
   onOpenVoice: () => void;
 }
@@ -25,7 +26,7 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
   onTabChange,
   onOpenVoice,
 }) => {
-  const { userProfile, automations } = useSara();
+  const { userProfile, automations, availableApps } = useSara();
   const activeAutomations = automations.filter((a) => a.enabled).length;
 
   const navItems = [
@@ -33,11 +34,12 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
     { id: 'chat', label: 'Chat with Sara', icon: MessageSquare },
     { id: 'voice', label: 'Live Voice Mode', icon: Mic, action: onOpenVoice },
     { id: 'avatar', label: '3D Human Wardrobe', icon: User },
+    { id: 'apps', label: 'Connected Apps (ফোন অ্যাপস)', icon: Smartphone, badge: `${availableApps.length} Apps` },
     { id: 'automations', label: 'AI Automations', icon: Zap, badge: `${activeAutomations} Active` },
     { id: 'memories', label: 'Memory Bank', icon: Brain },
     { id: 'permissions', label: 'Permission Center', icon: ShieldCheck },
     { id: 'activity', label: 'Activity Logs', icon: Activity },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'settings', label: 'Settings & Map', icon: Settings },
   ];
 
   return (

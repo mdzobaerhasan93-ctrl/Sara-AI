@@ -27,13 +27,16 @@ import {
   AlertCircle,
   X,
   Zap,
+  Smartphone,
+  Hand,
 } from 'lucide-react';
 import { PersonalityPreset } from '../../types';
 import { GestureMapView } from './GestureMapView';
 import { AutomationsView } from '../automations/AutomationsView';
+import { ConnectedAppsView } from '../apps/ConnectedAppsView';
 import { AuthModal } from '../auth/AuthModal';
 
-export const SettingsView: React.FC = () => {
+export const SettingsView: React.FC<{ initialTab?: string }> = ({ initialTab }) => {
   const {
     userProfile,
     updateUserProfile,
@@ -56,7 +59,7 @@ export const SettingsView: React.FC = () => {
     setScreenControlEnabled,
   } = useSara();
 
-  const [activeTab, setActiveTab] = useState<'account' | 'perms' | 'controls' | 'api' | 'personality' | 'gesture' | 'automations'>('account');
+  const [activeTab, setActiveTab] = useState<'account' | 'perms' | 'controls' | 'apps' | 'api' | 'personality' | 'gesture' | 'automations'>((initialTab as any) || 'apps');
   const [memorySearch, setMemorySearch] = useState<string>('');
   const [showAddMemoryModal, setShowAddMemoryModal] = useState<boolean>(false);
   const [newMemoryCategory, setNewMemoryCategory] = useState<any>('Personal');
@@ -90,26 +93,40 @@ export const SettingsView: React.FC = () => {
   return (
     <div className="space-y-4 pb-20 max-w-xl mx-auto animate-in fade-in duration-300">
       <div className="text-center py-1">
-        <h2 className="text-xl font-bold text-slate-100">Settings</h2>
+        <h2 className="text-xl font-bold text-slate-100">Settings & System Hub</h2>
       </div>
 
-      {/* 4 Main Tabs matching screenshots #13, #14, #16 */}
-      <div className="flex items-center justify-around border-b border-pink-500/20 pb-1">
+      {/* Tabs navigation with horizontal scroll on small devices */}
+      <div className="flex items-center overflow-x-auto no-scrollbar border-b border-pink-500/20 pb-1 gap-1 px-1">
         <button
-          onClick={() => setActiveTab('account')}
-          className={`py-2 px-3 text-xs font-bold tracking-wider uppercase transition-all relative ${
-            activeTab === 'account' ? 'text-pink-400' : 'text-slate-400 hover:text-slate-200'
+          onClick={() => setActiveTab('apps')}
+          className={`py-2 px-3 text-xs font-bold tracking-wider uppercase transition-all shrink-0 relative flex items-center gap-1.5 ${
+            activeTab === 'apps' ? 'text-pink-400 font-extrabold' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          ACCOUNT
-          {activeTab === 'account' && (
+          <Smartphone className="w-3.5 h-3.5 text-pink-400" />
+          <span>APPS (ফোন অ্যাপস)</span>
+          {activeTab === 'apps' && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-pink-500 rounded-full" />
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('gesture')}
+          className={`py-2 px-3 text-xs font-bold tracking-wider uppercase transition-all shrink-0 relative flex items-center gap-1.5 ${
+            activeTab === 'gesture' ? 'text-pink-400 font-extrabold' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Hand className="w-3.5 h-3.5 text-cyan-400" />
+          <span>মানচিত্র (GESTURE MAP)</span>
+          {activeTab === 'gesture' && (
             <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-pink-500 rounded-full" />
           )}
         </button>
 
         <button
           onClick={() => setActiveTab('perms')}
-          className={`py-2 px-3 text-xs font-bold tracking-wider uppercase transition-all relative ${
+          className={`py-2 px-3 text-xs font-bold tracking-wider uppercase transition-all shrink-0 relative ${
             activeTab === 'perms' ? 'text-pink-400' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -121,7 +138,7 @@ export const SettingsView: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('controls')}
-          className={`py-2 px-3 text-xs font-bold tracking-wider uppercase transition-all relative ${
+          className={`py-2 px-3 text-xs font-bold tracking-wider uppercase transition-all shrink-0 relative ${
             activeTab === 'controls' ? 'text-pink-400' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -132,20 +149,20 @@ export const SettingsView: React.FC = () => {
         </button>
 
         <button
-          onClick={() => setActiveTab('api')}
-          className={`py-2 px-3 text-xs font-bold tracking-wider uppercase transition-all relative ${
-            activeTab === 'api' ? 'text-pink-400' : 'text-slate-400 hover:text-slate-200'
+          onClick={() => setActiveTab('automations')}
+          className={`py-2 px-3 text-xs font-bold tracking-wider uppercase transition-all shrink-0 relative ${
+            activeTab === 'automations' ? 'text-pink-400' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          API
-          {activeTab === 'api' && (
+          AUTOMATIONS
+          {activeTab === 'automations' && (
             <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-pink-500 rounded-full" />
           )}
         </button>
 
         <button
           onClick={() => setActiveTab('personality')}
-          className={`py-2 px-3 text-xs font-bold tracking-wider uppercase transition-all relative ${
+          className={`py-2 px-3 text-xs font-bold tracking-wider uppercase transition-all shrink-0 relative ${
             activeTab === 'personality' ? 'text-pink-400' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -156,29 +173,32 @@ export const SettingsView: React.FC = () => {
         </button>
 
         <button
-          onClick={() => setActiveTab('gesture')}
-          className={`py-2 px-3 text-xs font-bold tracking-wider uppercase transition-all relative ${
-            activeTab === 'gesture' ? 'text-pink-400' : 'text-slate-400 hover:text-slate-200'
+          onClick={() => setActiveTab('account')}
+          className={`py-2 px-3 text-xs font-bold tracking-wider uppercase transition-all shrink-0 relative ${
+            activeTab === 'account' ? 'text-pink-400' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          GESTURE
-          {activeTab === 'gesture' && (
+          ACCOUNT
+          {activeTab === 'account' && (
             <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-pink-500 rounded-full" />
           )}
         </button>
 
         <button
-          onClick={() => setActiveTab('automations')}
-          className={`py-2 px-3 text-xs font-bold tracking-wider uppercase transition-all relative ${
-            activeTab === 'automations' ? 'text-pink-400' : 'text-slate-400 hover:text-slate-200'
+          onClick={() => setActiveTab('api')}
+          className={`py-2 px-3 text-xs font-bold tracking-wider uppercase transition-all shrink-0 relative ${
+            activeTab === 'api' ? 'text-pink-400' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          AUTOMATIONS
-          {activeTab === 'automations' && (
+          API
+          {activeTab === 'api' && (
             <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-pink-500 rounded-full" />
           )}
         </button>
       </div>
+
+      {/* APPS TAB */}
+      {activeTab === 'apps' && <ConnectedAppsView />}
 
       {/* GESTURE MAP TAB */}
       {activeTab === 'gesture' && <GestureMapView />}

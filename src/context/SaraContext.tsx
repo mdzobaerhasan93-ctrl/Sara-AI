@@ -15,7 +15,7 @@ import {
   AppPermissions,
 } from '../types';
 import { alarmAudio, checkScheduleMatch } from '../utils/alarmSound';
-import { AppInventoryService } from '../services/AppInventoryService';
+import { AppInventoryService, AppDefinition, InAppAction } from '../services/AppInventoryService';
 
 interface SaraContextType {
   // Assistant Status
@@ -114,6 +114,12 @@ interface SaraContextType {
   screenControlEnabled: boolean;
   setScreenControlEnabled: (val: boolean) => void;
   executeScreenCommand: (cmd: string) => boolean;
+
+  // Native Apps & Custom App Management
+  availableApps: AppDefinition[];
+  registerCustomApp: (app: AppDefinition) => void;
+  removeCustomApp: (id: string) => void;
+  refreshApps: () => void;
 
   // System Diagnostics
   cpuPower: number;
@@ -1673,8 +1679,22 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [networkConnected] = useState<boolean>(true);
   const [systemOperational] = useState<boolean>(true);
 
-  // 15. Native App Inventory
-  const [availableApps] = useState(() => AppInventoryService.getAllApps());
+  // 15. Native App Inventory & Custom Apps
+  const [availableApps, setAvailableApps] = useState<AppDefinition[]>(() => AppInventoryService.getAllApps());
+
+  const refreshApps = useCallback(() => {
+    setAvailableApps(AppInventoryService.getAllApps());
+  }, []);
+
+  const registerCustomApp = useCallback((app: AppDefinition) => {
+    AppInventoryService.registerCustomApp(app);
+    setAvailableApps(AppInventoryService.getAllApps());
+  }, []);
+
+  const removeCustomApp = useCallback((id: string) => {
+    AppInventoryService.removeCustomApp(id);
+    setAvailableApps(AppInventoryService.getAllApps());
+  }, []);
 
   const executeAppCommand = async (command: string) => {
     const appNameMatch = command.match(/open\s+(.+)/i);
@@ -1683,7 +1703,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const app = AppInventoryService.getAppByName(appName);
       if (app) {
         console.log(`Launching app: ${app.name} via ${app.launchUri}`);
-        // Integration with action pipeline would go here
+        // Integration with action pipeline
       } else {
         addMessage({ role: 'model', content: `দুঃখিত, আমি "${appName}" অ্যাপটি খুঁজে পাচ্ছি না।`, emotion: 'sad' });
       }
@@ -1769,6 +1789,10 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
         cpuPower,
         networkConnected,
         systemOperational,
+        availableApps,
+        registerCustomApp,
+        removeCustomApp,
+        refreshApps,
       }}
     >
       {children}

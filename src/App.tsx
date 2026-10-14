@@ -16,10 +16,11 @@ import { useWakeWord } from './hooks/useWakeWord';
 import { Download, Sparkles } from 'lucide-react';
 import { FloatingScreenControlOrb } from './components/home/FloatingScreenControlOrb';
 import { AlarmRingingModal } from './components/automations/AlarmRingingModal';
+import { ConnectedAppsView } from './components/apps/ConnectedAppsView';
 
 const MainLayout: React.FC = () => {
   const { userProfile, speakText, setOnOpenVoiceModal } = useSara();
-  const [activeTab, setActiveTab] = useState<TabType | 'memories' | 'automations' | 'permissions' | 'activity'>('home');
+  const [activeTab, setActiveTab] = useState<TabType | 'memories' | 'automations' | 'permissions' | 'activity' | 'apps'>('home');
   const [isVoiceOpen, setIsVoiceOpen] = useState<boolean>(false);
 
   const handleOpenVoice = useCallback(() => {
@@ -107,6 +108,8 @@ const MainLayout: React.FC = () => {
         return <SettingsView />;
       case 'automations':
         return <AutomationsView />;
+      case 'apps':
+        return <ConnectedAppsView />;
       case 'permissions':
         return <PermissionCenterView />;
       case 'activity':

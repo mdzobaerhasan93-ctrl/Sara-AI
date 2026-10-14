@@ -38,9 +38,9 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
   onClose,
   onOpenVoice,
 }) => {
-  const { speakText, addActivityLog, screenControlEnabled, permissions } = useSara();
+  const { speakText, addActivityLog, screenControlEnabled, permissions, availableApps, registerCustomApp } = useSara();
 
-  const [apps, setApps] = useState<AppDefinition[]>(() => AppInventoryService.getAllApps());
+  const apps = availableApps;
   const [selectedApp, setSelectedApp] = useState<AppDefinition>(apps[0] || null);
   const [selectedAction, setSelectedAction] = useState<InAppAction | null>(null);
   const [customPayload, setCustomPayload] = useState<string>('');
@@ -161,8 +161,7 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
       ]
     };
 
-    AppInventoryService.registerCustomApp(newApp);
-    setApps(AppInventoryService.getAllApps());
+    registerCustomApp(newApp);
     setSelectedApp(newApp);
     setShowAddAppModal(false);
     setNewAppName('');

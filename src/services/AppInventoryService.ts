@@ -356,7 +356,29 @@ const INITIAL_APP_REGISTRY: Record<string, AppDefinition> = {
 };
 
 export class AppInventoryService {
-  private static registry: Record<string, AppDefinition> = { ...INITIAL_APP_REGISTRY };
+  private static registry: Record<string, AppDefinition> = AppInventoryService.loadRegistry();
+
+  private static loadRegistry(): Record<string, AppDefinition> {
+    const base: Record<string, AppDefinition> = { ...INITIAL_APP_REGISTRY };
+    try {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem('sara_custom_apps') : null;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((app: AppDefinition) => {
+            if (app && app.id) {
+              base[app.id.toLowerCase()] = app;
+            }
+          });
+        } else if (typeof parsed === 'object') {
+          Object.assign(base, parsed);
+        }
+      }
+    } catch (e) {
+      console.error('Error loading custom apps', e);
+    }
+    return base;
+  }
 
   static getAllApps(): AppDefinition[] {
     return Object.values(this.registry);
@@ -383,6 +405,18 @@ export class AppInventoryService {
     try {
       localStorage.setItem('sara_custom_apps', JSON.stringify(Object.values(this.registry)));
     } catch (e) {}
+  }
+
+  static removeCustomApp(id: string): boolean {
+    const key = id.toLowerCase();
+    if (this.registry[key]) {
+      delete this.registry[key];
+      try {
+        localStorage.setItem('sara_custom_apps', JSON.stringify(Object.values(this.registry)));
+      } catch (e) {}
+      return true;
+    }
+    return false;
   }
 
   // Find an app and specific deep action from natural language voice prompt
