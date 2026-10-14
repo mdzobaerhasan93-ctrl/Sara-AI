@@ -26,6 +26,7 @@ import {
   BookmarkCheck,
   RefreshCw,
   Quote,
+  Smartphone,
 } from 'lucide-react';
 import { EmotionState } from '../../types';
 import { useSara } from '../../context/SaraContext';
@@ -35,6 +36,7 @@ import { TabType } from '../navigation/BottomNavigation';
 import { MoodHabitTracker } from './MoodHabitTracker';
 import { WakeWordIndicator } from '../voice/WakeWordIndicator';
 import { GestureRecognitionModal } from '../gesture/GestureRecognitionModal';
+import { DirectAppControllerModal } from './DirectAppControllerModal';
 
 interface HomeViewProps {
   onNavigate: (tab: TabType | 'memories' | 'automations' | 'permissions' | 'activity') => void;
@@ -118,6 +120,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
 
   const [coreViewMode, setCoreViewMode] = useState<'3d' | 'orb'>('3d');
   const [showGestureModal, setShowGestureModal] = useState<boolean>(false);
+  const [showAppControllerModal, setShowAppControllerModal] = useState<boolean>(false);
   const [runningAutoId, setRunningAutoId] = useState<string | null>(null);
 
   // Daily Affirmations State (randomized on initial load)
@@ -218,7 +221,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
           {/* Module 3: Data (Automations Section) */}
           <button
             onClick={() => onNavigate('automations' as any)}
-            className="p-2.5 rounded-2xl glass-card border border-cyan-500/40 hover:border-cyan-400 flex items-center justify-between transition-all group active:scale-95 text-left bg-gradient-to-r from-cyan-950/60 via-purple-950/30 to-[#070617] shadow-[0_0_15px_rgba(6,182,212,0.18)]"
+            className="p-2 rounded-2xl glass-card border border-cyan-500/40 hover:border-cyan-400 flex items-center justify-between transition-all group active:scale-95 text-left bg-gradient-to-r from-cyan-950/60 via-purple-950/30 to-[#070617] shadow-[0_0_15px_rgba(6,182,212,0.18)]"
           >
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-lg bg-cyan-500/25 flex items-center justify-center text-cyan-300 group-hover:scale-105 shadow-[0_0_10px_rgba(6,182,212,0.3)]">
@@ -236,6 +239,29 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
               </div>
             </div>
             <ChevronRight className="w-3.5 h-3.5 text-cyan-400" />
+          </button>
+
+          {/* Module 3.5: Direct In-App Controller */}
+          <button
+            onClick={() => setShowAppControllerModal(true)}
+            className="p-2 rounded-2xl glass-card border border-pink-500/40 hover:border-pink-400 flex items-center justify-between transition-all group active:scale-95 text-left bg-gradient-to-r from-pink-950/70 via-purple-950/40 to-[#070617] shadow-[0_0_15px_rgba(255,46,147,0.2)]"
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-pink-500/25 flex items-center justify-center text-pink-300 group-hover:scale-105 shadow-[0_0_10px_rgba(255,46,147,0.4)]">
+                <Smartphone className="w-4 h-4 text-pink-400" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-pink-100 flex items-center gap-1">
+                  <span>Apps</span>
+                  <span className="text-[9px] px-1 py-0.2 rounded bg-pink-500/20 text-pink-300 font-mono">LIVE</span>
+                </p>
+                <div className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                  <span className="text-[10px] text-pink-300 font-bold">অ্যাপস কন্ট্রোল</span>
+                </div>
+              </div>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-pink-400" />
           </button>
 
           {/* Module 4: Stats */}
@@ -468,6 +494,117 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
               </svg>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* DIRECT IN-APP CONTROLLER SECTION (ফোনে থাকা সমস্ত অ্যাপ কন্ট্রোল) */}
+      <div className="p-3.5 sm:p-4 rounded-3xl glass-card border border-pink-500/35 space-y-3 bg-gradient-to-br from-[#120824]/95 via-[#0e071f]/90 to-[#070b1e]/95 shadow-[0_0_25px_rgba(255,46,147,0.18)]">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-pink-500/25 flex items-center justify-center text-pink-400 shrink-0 shadow-[0_0_12px_rgba(255,46,147,0.4)]">
+              <Smartphone className="w-4 h-4 text-pink-400" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-xs font-bold text-slate-100 tracking-wider uppercase flex items-center gap-1.5 flex-wrap">
+                <span>IN-APP CONTROLLER</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-mono font-bold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  ACCESSIBILITY DIRECT
+                </span>
+              </h3>
+              <p className="text-[10px] text-pink-300/90 truncate">
+                ইউজারের ফোনের অ্যাপসে সরাসরি ঢুকে অ্যাকশন ও কমেন্ট সম্পাদন
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowAppControllerModal(true)}
+            className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold text-pink-300 hover:text-white bg-pink-500/20 hover:bg-pink-500/30 border border-pink-500/40 transition-all flex items-center gap-1 shrink-0"
+          >
+            <span>কন্ট্রোল প্যানেল</span>
+            <ChevronRight className="w-3.5 h-3.5 text-pink-400" />
+          </button>
+        </div>
+
+        {/* Quick 1-click in-app action pills */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <button
+            onClick={() => setShowAppControllerModal(true)}
+            className="p-2.5 rounded-2xl bg-slate-900/80 border border-pink-500/20 hover:border-pink-500/40 flex items-center gap-2 group active:scale-98 transition-all text-left"
+          >
+            <div className="w-7 h-7 rounded-xl bg-pink-600/20 flex items-center justify-center text-pink-400 font-bold text-xs shrink-0">
+              IG
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-slate-200 truncate group-hover:text-pink-300">ইনস্টাগ্রাম রিলস</p>
+              <p className="text-[9px] text-slate-400 truncate">রিলস দেখা ও কমেন্ট</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => setShowAppControllerModal(true)}
+            className="p-2.5 rounded-2xl bg-slate-900/80 border border-blue-500/20 hover:border-blue-500/40 flex items-center gap-2 group active:scale-98 transition-all text-left"
+          >
+            <div className="w-7 h-7 rounded-xl bg-blue-600/20 flex items-center justify-center text-blue-400 font-bold text-xs shrink-0">
+              FB
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-slate-200 truncate group-hover:text-blue-300">ফেসবুক পোস্ট</p>
+              <p className="text-[9px] text-slate-400 truncate">স্ট্যাটাস ও নোটিফিকেশন</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => setShowAppControllerModal(true)}
+            className="p-2.5 rounded-2xl bg-slate-900/80 border border-red-500/20 hover:border-red-500/40 flex items-center gap-2 group active:scale-98 transition-all text-left"
+          >
+            <div className="w-7 h-7 rounded-xl bg-red-600/20 flex items-center justify-center text-red-400 font-bold text-xs shrink-0">
+              YT
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-slate-200 truncate group-hover:text-red-300">ইউটিউব প্লে</p>
+              <p className="text-[9px] text-slate-400 truncate">ভিডিও ও শর্টস প্লে</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => setShowAppControllerModal(true)}
+            className="p-2.5 rounded-2xl bg-slate-900/80 border border-emerald-500/20 hover:border-emerald-500/40 flex items-center gap-2 group active:scale-98 transition-all text-left"
+          >
+            <div className="w-7 h-7 rounded-xl bg-emerald-600/20 flex items-center justify-center text-emerald-400 font-bold text-xs shrink-0">
+              WA
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-slate-200 truncate group-hover:text-emerald-300">হোয়াটসঅ্যাপ</p>
+              <p className="text-[9px] text-slate-400 truncate">সরাসরি বার্তা প্রেরণ</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => setShowAppControllerModal(true)}
+            className="p-2.5 rounded-2xl bg-slate-900/80 border border-amber-500/20 hover:border-amber-500/40 flex items-center gap-2 group active:scale-98 transition-all text-left"
+          >
+            <div className="w-7 h-7 rounded-xl bg-amber-600/20 flex items-center justify-center text-amber-400 font-bold text-xs shrink-0">
+              CALC
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-slate-200 truncate group-hover:text-amber-300">ক্যালকুলেটর</p>
+              <p className="text-[9px] text-slate-400 truncate">গণিত সমাধান ও হিসাব</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => setShowAppControllerModal(true)}
+            className="p-2.5 rounded-2xl bg-gradient-to-r from-pink-900/40 via-purple-900/30 to-slate-900 border border-pink-500/30 hover:border-pink-400 flex items-center gap-2 group active:scale-98 transition-all text-left"
+          >
+            <div className="w-7 h-7 rounded-xl bg-pink-500/20 flex items-center justify-center text-pink-400 font-bold text-xs shrink-0">
+              +
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-pink-300 truncate">সমস্ত অ্যাপস...</p>
+              <p className="text-[9px] text-slate-400 truncate">কাস্টম অ্যাপ যোগ ও কন্ট্রোল</p>
+            </div>
+          </button>
         </div>
       </div>
 
@@ -755,6 +892,13 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
       <GestureRecognitionModal
         isOpen={showGestureModal}
         onClose={() => setShowGestureModal(false)}
+      />
+
+      {/* Direct In-App Controller Modal */}
+      <DirectAppControllerModal
+        isOpen={showAppControllerModal}
+        onClose={() => setShowAppControllerModal(false)}
+        onOpenVoice={onOpenVoice}
       />
     </div>
   );

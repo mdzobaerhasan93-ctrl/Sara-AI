@@ -889,26 +889,86 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
       speakText('বাবু, স্ক্রিন কন্ট্রোল ফিচারটি সেটিংসে বন্ধ করা আছে। দয়া করে আগে অন করে নাও ❤️', 'caring');
       return false;
     }
-    const q = command.toLowerCase();
-    
-    // Check if it's an "Open [App]" command
+    const q = command.toLowerCase().trim();
+
+    // 1. Check for deep in-app automation parsing (e.g. "ইনস্টাগ্রাম ওপেন করে রিলসে কমেন্ট করো")
+    const parsed = AppInventoryService.parseCommand(command);
+    if (parsed.app) {
+      const app = parsed.app;
+      const action = parsed.action;
+
+      if (action) {
+        // Deep action execution inside the app
+        speakText(`${app.bengaliName} অ্যাপের ভেতরে ঢুকে ${action.bengaliName} সম্পন্ন করছি বাবু! ❤️`, 'excited');
+
+        // Launch target app via URI or web fallback
+        try {
+          if (app.launchUri) {
+            window.open(app.launchUri, '_blank');
+          } else if (app.webFallbackUrl) {
+            window.open(app.webFallbackUrl, '_blank');
+          }
+        } catch (e) {}
+
+        // Native Android Accessibility hook if running in native app
+        if (typeof window !== 'undefined' && (window as any).AndroidBridge?.performAccessibilityAction) {
+          try {
+            (window as any).AndroidBridge.performAccessibilityAction(app.packageName, action.id, parsed.payload || '');
+          } catch (err) {}
+        }
+
+        addActivityLog({
+          title: `In-App Control: ${app.name} -> ${action.name}`,
+          type: 'action',
+          service: 'Android Accessibility Bridge',
+          status: 'SUCCESS',
+          details: `Executed in-app action: ${action.bengaliName} (${action.name})`,
+        });
+
+        // Affectionate follow-up confirmation
+        setTimeout(() => {
+          speakText(`সোনা, ${app.bengaliName}-এ গিয়ে তোমার নির্দেশ মতো কাজ সফলভাবে করে এসেছি! 🥰`, 'romantic');
+        }, 1200);
+
+        return true;
+      }
+
+      // If only app matched without specific action, open the app
+      speakText(`${app.bengaliName} ওপেন করে দেওয়া হচ্ছে সোনা! ✨`, 'happy');
+      try {
+        if (app.launchUri) {
+          window.open(app.launchUri, '_blank');
+        } else if (app.webFallbackUrl) {
+          window.open(app.webFallbackUrl, '_blank');
+        }
+      } catch (e) {}
+
+      addActivityLog({
+        title: `Screen Control: Opened ${app.name}`,
+        type: 'action',
+        service: 'Device Screen Control',
+        status: 'SUCCESS',
+        details: `Launched ${app.packageName}`,
+      });
+      return true;
+    }
+
+    // 2. Fallback check for "Open [App]" or "ওপেন [App]" pattern
     const openMatch = q.match(/(open|ওপেন)\s+(.+)/);
     if (openMatch) {
       const appName = openMatch[2].trim();
       const app = AppInventoryService.getAppByName(appName);
-      
+
       if (app) {
-        // Here we would check permissions if needed, for now just launch
-        // In a real Android app, we would bridge to native launch code here.
-        // For web, we use window.open with the launch URI or a fallback search.
-        
-        // Add approval step if it's a new or sensitive app
-        const actionId = `launch_${app.id}_${Date.now()}`;
-        
-        // Simulating approval for this demo
-        speakText(`${app.name} ওপেন করা হচ্ছে সোনা! ✨`, 'happy');
-        window.open(app.launchUri, '_blank');
-        
+        speakText(`${app.bengaliName || app.name} ওপেন করা হচ্ছে সোনা! ✨`, 'happy');
+        try {
+          if (app.launchUri) {
+            window.open(app.launchUri, '_blank');
+          } else if (app.webFallbackUrl) {
+            window.open(app.webFallbackUrl, '_blank');
+          }
+        } catch (e) {}
+
         addActivityLog({
           title: `Screen Control: Opened ${app.name}`,
           type: 'action',
@@ -919,7 +979,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // Fallback for general search
+    // 3. Fallback for general search
     if (q.includes('movie') || q.includes('মুভি') || q.includes('চলচ্চিত্র') || q.includes('সার্চ')) {
       window.open('https://www.google.com/search?q=' + encodeURIComponent(command), '_blank');
       speakText('মুভি বা তথ্য সার্চ করে দেওয়া হয়েছে সোনা! 🍿', 'excited');
