@@ -85,17 +85,13 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
     setExecutionSuccess(true);
     setIsExecuting(false);
 
-    // Trigger real launch / intent safely without opening blank/black browser tabs
-    try {
-      AppInventoryService.launchAppSafely(app);
-    } catch (e) {}
-
     // Native Bridge call if running in native Android container
     if (typeof window !== 'undefined' && (window as any).AndroidBridge?.performAccessibilityAction) {
       try {
         (window as any).AndroidBridge.performAccessibilityAction(app.packageName, action.id, finalPayload);
       } catch (err) {}
     }
+
 
     // Loving confirmation from Sara
     const confirmMessage = `বাবু, ${app.bengaliName}-এ গিয়ে ${action.bengaliName} সফলভাবে সম্পন্ন করেছি! 🥰`;
@@ -139,9 +135,16 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
       const targetAction = parsed.action || parsed.app.actions[0];
       handleExecuteAction(parsed.app, targetAction, prompt);
     } else {
-      speakText(`সোনা, আমি "${prompt}" নির্দেশটি সিস্টেমে প্রসেস করছি।`, 'caring');
-      const safeSearchUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(prompt);
-      window.open(safeSearchUrl, '_blank', 'noopener,noreferrer');
+      speakText(`সোনা, আমি "${prompt}" নির্দেশটি এআই এজেন্টের মাধ্যমে প্রসেস করছি ❤️`, 'caring');
+      setIsExecuting(true);
+      setExecutionSuccess(false);
+      const agentRes = await AIAgentService.executeCommand(prompt, (step) => {
+        setExecutionSteps((prev) => [...prev, `${step.title}: ${step.detail}`]);
+      });
+      setExecutionSteps(agentRes.steps.map((s) => `${s.title}: ${s.detail}`));
+      setExecutionSuccess(true);
+      setIsExecuting(false);
+      speakText(agentRes.message, 'romantic');
     }
   };
 

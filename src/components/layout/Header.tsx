@@ -69,26 +69,26 @@ export const Header: React.FC<HeaderProps> = () => {
 
   return (
     <>
-      <header className="px-4 pt-3 pb-2 flex items-center justify-between">
-        <div>
+      <header className="px-3 sm:px-4 pt-3 pb-2 flex items-center justify-between gap-2">
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h1 className={`text-2xl font-bold tracking-tight ${greeting.color} drop-shadow-[0_0_10px_rgba(16,185,129,0.3)]`}>
+            <h1 className={`text-lg sm:text-2xl font-bold tracking-tight truncate ${greeting.color} drop-shadow-[0_0_10px_rgba(16,185,129,0.3)]`}>
               {greeting.text}
             </h1>
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="text-pink-500 font-extrabold text-sm tracking-wide">
+            <span className="text-pink-500 font-extrabold text-xs sm:text-sm tracking-wide">
               {userProfile.personality === 'GirlFriend' ? 'SARA' : 'SARA AI'}
             </span>
-            <span className="text-pink-400 text-xs">❤️</span>
-            <span className="text-[11px] font-semibold text-pink-400/90 tracking-wider">
+            <span className="text-pink-400 text-[10px] sm:text-xs">❤️</span>
+            <span className="text-[10px] sm:text-[11px] font-semibold text-pink-400/90 tracking-wider">
               AI GIRLFRIEND
             </span>
-            <span className="text-pink-400 text-xs">❤️</span>
+            <span className="text-pink-400 text-[10px] sm:text-xs">❤️</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Quick Alarm Stop Button if ringing */}
           {activeRingingAlarm && (
             <button

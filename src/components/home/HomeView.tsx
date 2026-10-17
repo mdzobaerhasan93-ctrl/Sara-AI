@@ -175,10 +175,10 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
 
   return (
     <div className="space-y-5 pb-20 animate-in fade-in duration-300">
-      {/* 1. Top Core Section (Left Modules + Right AI Core Unit) */}
-      <div className="grid grid-cols-12 gap-3 items-stretch">
-        {/* Left Side: 4 System Connect Modules */}
-        <div className="col-span-5 flex flex-col justify-between space-y-2">
+      {/* 1. Top Core Section (Responsive: Stacks on mobile, Side-by-side on desktop) */}
+      <div className="flex flex-col lg:grid lg:grid-cols-12 gap-3.5 items-stretch">
+        {/* System Connect Modules (Responsive Grid: 2 cols on mobile, 3 on tablet, 1 on desktop) */}
+        <div className="order-last lg:order-first lg:col-span-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-1 gap-2">
           {/* Module 1: Mem */}
           <button
             onClick={() => onNavigate('settings')}
@@ -349,8 +349,8 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
           </button>
         </div>
 
-        {/* Right Side: 3D REAL HUMAN AVATAR & AI CORE Card */}
-        <div className="col-span-7 rounded-3xl glass-card-pink border border-pink-500/30 p-3 flex flex-col items-center justify-between text-center relative overflow-hidden shadow-[0_0_25px_rgba(255,46,147,0.2)]">
+        {/* 3D REAL HUMAN AVATAR & AI CORE Card (Prominent on top on mobile, side-by-side on desktop) */}
+        <div className="order-first lg:order-last lg:col-span-7 rounded-3xl glass-card-pink border border-pink-500/30 p-3 sm:p-4 flex flex-col items-center justify-between text-center relative overflow-hidden shadow-[0_0_25px_rgba(255,46,147,0.2)]">
           {/* Subtle cosmic background glow */}
           <div className="absolute inset-0 bg-radial from-pink-900/30 via-purple-950/20 to-transparent pointer-events-none" />
 
@@ -454,8 +454,8 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
           </div>
         </div>
 
-        {/* 3 Metric Cards matching screenshot */}
-        <div className="grid grid-cols-3 gap-2.5">
+        {/* 3 Metric Cards (Responsive: single-column on tiny mobile screens, 3-columns on normal screens) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5">
           {/* Metric 1: System Status */}
           <div className="p-2.5 rounded-2xl glass-card border border-emerald-500/20 flex flex-col justify-between">
             <div>
