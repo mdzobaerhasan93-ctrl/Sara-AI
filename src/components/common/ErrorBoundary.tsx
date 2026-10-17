@@ -30,6 +30,14 @@ export class ErrorBoundary extends Component<Props, State> {
 
   private handleReset = () => {
     this.setState({ hasError: false, error: null, errorInfo: null });
+    try {
+      if (typeof window !== 'undefined' && 'caches' in window) {
+        caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))).finally(() => {
+          window.location.reload();
+        });
+        return;
+      }
+    } catch (_) {}
     window.location.reload();
   };
 

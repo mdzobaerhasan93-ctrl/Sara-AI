@@ -907,13 +907,9 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Deep action execution inside the app
         speakText(`${app.bengaliName} অ্যাপের ভেতরে ঢুকে ${action.bengaliName} সম্পন্ন করছি বাবু! ❤️`, 'excited');
 
-        // Launch target app via URI or web fallback
+        // Launch target app safely via URI or web fallback without orphaned blank tabs
         try {
-          if (app.launchUri) {
-            window.open(app.launchUri, '_blank');
-          } else if (app.webFallbackUrl) {
-            window.open(app.webFallbackUrl, '_blank');
-          }
+          AppInventoryService.launchAppSafely(app);
         } catch (e) {}
 
         // Native Android Accessibility hook if running in native app
@@ -942,11 +938,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // If only app matched without specific action, open the app
       speakText(`${app.bengaliName} ওপেন করে দেওয়া হচ্ছে সোনা! ✨`, 'happy');
       try {
-        if (app.launchUri) {
-          window.open(app.launchUri, '_blank');
-        } else if (app.webFallbackUrl) {
-          window.open(app.webFallbackUrl, '_blank');
-        }
+        AppInventoryService.launchAppSafely(app);
       } catch (e) {}
 
       addActivityLog({
@@ -968,11 +960,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (app) {
         speakText(`${app.bengaliName || app.name} ওপেন করা হচ্ছে সোনা! ✨`, 'happy');
         try {
-          if (app.launchUri) {
-            window.open(app.launchUri, '_blank');
-          } else if (app.webFallbackUrl) {
-            window.open(app.webFallbackUrl, '_blank');
-          }
+          AppInventoryService.launchAppSafely(app);
         } catch (e) {}
 
         addActivityLog({

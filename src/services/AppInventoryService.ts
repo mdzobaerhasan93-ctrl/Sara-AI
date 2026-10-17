@@ -457,4 +457,63 @@ export class AppInventoryService {
 
     return {};
   }
+
+  // Helper to detect mobile device
+  static isMobileDevice(): boolean {
+    if (typeof window === 'undefined') return false;
+    return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
+  }
+
+  // Launch target app safely without opening black/blank tabs
+  static launchAppSafely(app: AppDefinition, onFallbackNotice?: (msg: string) => void): boolean {
+    if (typeof window === 'undefined') return false;
+
+    const isMobile = this.isMobileDevice();
+
+    // 1. If on Desktop:
+    // Mobile URI schemes (e.g. instagram://, fb://, etc.) don't exist on desktop and cause browser to open a blank black tab!
+    // Therefore, always open the official webFallbackUrl on desktop!
+    if (!isMobile) {
+      const targetUrl = app.webFallbackUrl || (app.launchUri?.startsWith('http') ? app.launchUri : `https://www.google.com/search?q=${encodeURIComponent(app.name)}`);
+      window.open(targetUrl, '_blank', 'noopener,noreferrer');
+      return true;
+    }
+
+    // 2. If on Mobile:
+    // If it's a standard web URL, open directly
+    if (app.launchUri?.startsWith('http')) {
+      window.open(app.launchUri, '_blank');
+      return true;
+    }
+
+    // If it's a mobile URI scheme (e.g. instagram://, fb://, whatsapp://, etc.):
+    // DO NOT use window.open(scheme, '_blank') because it opens an orphaned blank black tab!
+    // Instead, use a hidden iframe with fallback to web URL:
+    try {
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = app.launchUri;
+      document.body.appendChild(iframe);
+
+      const start = Date.now();
+      setTimeout(() => {
+        try {
+          if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+        } catch (e) {}
+
+        // If the native app didn't take over within 1.5s, fall back to web
+        if (Date.now() - start < 2000 && app.webFallbackUrl) {
+          window.location.href = app.webFallbackUrl;
+        }
+      }, 1500);
+      return true;
+    } catch (e) {
+      if (app.webFallbackUrl) {
+        window.location.href = app.webFallbackUrl;
+        return true;
+      }
+    }
+    return false;
+  }
 }
+

@@ -3,6 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     
     <!-- Google Site Verification for Search Console -->
     <meta name="google-site-verification" content="0P2r2U0lb3blDT_xKdDgjzgfgAQkLwJeLRMpHIZonB8" />
@@ -14,25 +17,22 @@
     <meta name="keywords" content="saraai, sara ai, sara ai girlfriend, sara virtual companion, সারা এআই, saraai app, sara ai voice assistant, sara companion pass, ai girlfriend bangla" />
     <meta name="author" content="SaraAI" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
-    <link rel="canonical" href="https://saraai-gf.vercel.app/" />
 
     <!-- Open Graph / Facebook / WhatsApp -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://saraai-gf.vercel.app/" />
     <meta property="og:title" content="SaraAI — Your AI Voice Companion & Girlfriend" />
     <meta property="og:description" content="SaraAI (সারা এআই) is your affectionate virtual AI companion & girlfriend with live talking 3D avatar, sweet Bengali voice chat, real AI task automations, and smart alarms." />
     <meta property="og:site_name" content="SaraAI" />
-    <meta property="og:image" content="https://saraai-gf.vercel.app/icons/icon-512.png" />
+    <meta property="og:image" content="/icons/icon-512.png" />
     <meta property="og:image:width" content="512" />
     <meta property="og:image:height" content="512" />
     <meta property="og:image:alt" content="SaraAI Companion" />
 
     <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="https://saraai-gf.vercel.app/" />
     <meta name="twitter:title" content="SaraAI — Your AI Voice Companion & Girlfriend" />
     <meta name="twitter:description" content="SaraAI (সারা এআই) is your affectionate virtual AI companion & girlfriend with live talking 3D avatar, sweet Bengali voice chat, real AI task automations, and smart alarms." />
-    <meta name="twitter:image" content="https://saraai-gf.vercel.app/icons/icon-512.png" />
+    <meta name="twitter:image" content="/icons/icon-512.png" />
 
     <!-- Mobile & PWA Theme -->
     <meta name="theme-color" content="#070714" />
@@ -54,7 +54,6 @@
       "@type": "WebApplication",
       "name": "SaraAI",
       "alternateName": ["saraai", "Sara AI", "Sara AI Companion", "সারা এআই"],
-      "url": "https://saraai-gf.vercel.app/",
       "applicationCategory": "LifestyleApplication",
       "operatingSystem": "All",
       "inLanguage": ["bn", "en"],
@@ -67,9 +66,136 @@
       }
     }
     </script>
+
+    <style>
+      /* Ultra-lightweight pre-hydration styles to guarantee zero black screen */
+      #sara-preloader {
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(circle at 50% 30%, #150928 0%, #050512 70%, #020208 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 99999;
+        font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        color: #f1f5f9;
+        padding: 24px;
+        text-align: center;
+      }
+      .sara-pulsing-avatar {
+        width: 88px;
+        height: 88px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #ff2e93, #7928ca);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 45px rgba(255, 46, 147, 0.6);
+        animation: saraPulse 2s infinite ease-in-out;
+        position: relative;
+        margin-bottom: 20px;
+      }
+      .sara-heart-icon {
+        font-size: 38px;
+        animation: saraHeartBeat 1.4s infinite ease-in-out;
+      }
+      @keyframes saraPulse {
+        0%, 100% { transform: scale(1); box-shadow: 0 0 35px rgba(255, 46, 147, 0.5); }
+        50% { transform: scale(1.08); box-shadow: 0 0 60px rgba(255, 46, 147, 0.85); }
+      }
+      @keyframes saraHeartBeat {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.22); }
+      }
+      .sara-title {
+        font-size: 24px;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        background: linear-gradient(135deg, #ff419e, #c084fc);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 6px;
+      }
+      .sara-subtitle {
+        font-size: 13px;
+        color: #94a3b8;
+        max-width: 320px;
+        line-height: 1.5;
+        margin-bottom: 24px;
+      }
+      .sara-bar-container {
+        width: 180px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 999px;
+        overflow: hidden;
+        position: relative;
+      }
+      .sara-bar-fill {
+        width: 50%;
+        height: 100%;
+        background: linear-gradient(90deg, #ff2e93, #00f2fe);
+        border-radius: 999px;
+        animation: saraLoadingBar 1.5s infinite ease-in-out;
+      }
+      @keyframes saraLoadingBar {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(200%); }
+      }
+      .sara-troubleshoot {
+        display: none;
+        margin-top: 24px;
+        font-size: 11px;
+      }
+      .sara-reload-btn {
+        background: #1e1b4b;
+        color: #f472b6;
+        border: 1px solid rgba(244, 114, 182, 0.4);
+        padding: 8px 16px;
+        border-radius: 14px;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .sara-reload-btn:hover {
+        background: #2e1065;
+        color: #fff;
+      }
+    </style>
   </head>
   <body class="bg-[#05050f] text-slate-100 overflow-x-hidden selection:bg-pink-500/30 selection:text-pink-200">
-    <div id="root"></div>
+    <div id="root">
+      <!-- Instant pre-hydration splash: visible in 0ms so screen is NEVER black or blank -->
+      <div id="sara-preloader">
+        <div class="sara-pulsing-avatar">
+          <span class="sara-heart-icon">❤️</span>
+        </div>
+        <div class="sara-title">SARA AI • সারা এআই</div>
+        <div class="sara-subtitle">আপনার ভার্চুয়াল সঙ্গী ও ভয়েস অ্যাসিস্ট্যান্ট লোড হচ্ছে...</div>
+        <div class="sara-bar-container">
+          <div class="sara-bar-fill"></div>
+        </div>
+
+        <div id="sara-troubleshoot-box" class="sara-troubleshoot">
+          <p style="color: #94a3b8; margin-bottom: 8px;">কানেকশন বা ব্রাউজার ক্যাশ সংক্রান্ত বিলম্ব?</p>
+          <button
+            class="sara-reload-btn"
+            onclick="if('caches' in window){caches.keys().then(function(k){return Promise.all(k.map(function(c){return caches.delete(c);}));}).then(function(){location.reload(true);});}else{location.reload(true);}"
+          >
+            🔄 ক্যাশ পরিষ্কার করে রিলোড দিন
+          </button>
+        </div>
+      </div>
+      <script>
+        // Show reload button after 4 seconds if React has not mounted
+        setTimeout(function() {
+          var box = document.getElementById('sara-troubleshoot-box');
+          if (box) box.style.display = 'block';
+        }, 4000);
+      </script>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

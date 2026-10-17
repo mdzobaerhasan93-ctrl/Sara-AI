@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSara } from '../../context/SaraContext';
-import { AppDefinition, InAppAction } from '../../services/AppInventoryService';
+import { AppDefinition, InAppAction, AppInventoryService } from '../../services/AppInventoryService';
 import {
   Smartphone,
   Plus,
@@ -222,9 +222,9 @@ export const ConnectedAppsView: React.FC = () => {
     });
 
     try {
-      window.open(app.launchUri, '_blank');
+      AppInventoryService.launchAppSafely(app);
     } catch {
-      window.open(app.webFallbackUrl, '_blank');
+      if (app.webFallbackUrl) window.open(app.webFallbackUrl, '_blank', 'noopener,noreferrer');
     }
   };
 

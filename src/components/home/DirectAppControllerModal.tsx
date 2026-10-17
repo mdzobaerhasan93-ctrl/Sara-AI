@@ -84,13 +84,9 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
     setExecutionSuccess(true);
     setIsExecuting(false);
 
-    // Trigger real launch / intent if browser allows
+    // Trigger real launch / intent safely without opening blank/black browser tabs
     try {
-      if (app.launchUri) {
-        window.open(app.launchUri, '_blank');
-      } else if (app.webFallbackUrl) {
-        window.open(app.webFallbackUrl, '_blank');
-      }
+      AppInventoryService.launchAppSafely(app);
     } catch (e) {}
 
     // Native Bridge call if running in native Android container
@@ -304,10 +300,9 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
 
                 <button
                   onClick={() => {
-                    if (selectedApp.launchUri) window.open(selectedApp.launchUri, '_blank');
-                    else if (selectedApp.webFallbackUrl) window.open(selectedApp.webFallbackUrl, '_blank');
+                    AppInventoryService.launchAppSafely(selectedApp);
                   }}
-                  className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1"
+                  className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1 active:scale-95 transition-transform"
                 >
                   <span>সরাসরি লঞ্চ</span>
                   <ExternalLink className="w-3 h-3" />

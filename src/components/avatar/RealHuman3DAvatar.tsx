@@ -35,6 +35,7 @@ export const RealHuman3DAvatar: React.FC<RealHuman3DAvatarProps> = ({
   const mountRef = useRef<HTMLDivElement>(null);
   const [isInteracted, setIsInteracted] = useState(false);
   const [is3DMode, setIs3DMode] = useState(true);
+  const [webGLAvailable, setWebGLAvailable] = useState(true);
 
   // References for Three.js objects
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -116,18 +117,26 @@ export const RealHuman3DAvatar: React.FC<RealHuman3DAvatarProps> = ({
     camera.position.set(0, 0.1, 3.8);
     cameraRef.current = camera;
 
-    // 3. WebGL Renderer
-    const renderer = new THREE.WebGLRenderer({
-      alpha: true,
-      antialias: true,
-      powerPreference: 'high-performance',
-    });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
-    container.replaceChildren(renderer.domElement);
-    rendererRef.current = renderer;
+    // 3. WebGL Renderer with graceful detection
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        alpha: true,
+        antialias: true,
+        powerPreference: 'high-performance',
+      });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.05;
+      container.replaceChildren(renderer.domElement);
+      rendererRef.current = renderer;
+    } catch (err) {
+      console.warn('WebGL initialization fallback to 2.5D Animated Mode:', err);
+      setWebGLAvailable(false);
+      setIs3DMode(false);
+      return;
+    }
 
     // 4. Lighting Rig (High-end Studio & Companion Neon Rim)
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
@@ -354,10 +363,18 @@ export const RealHuman3DAvatar: React.FC<RealHuman3DAvatarProps> = ({
     window.addEventListener('resize', handleResize);
 
     return () => {
-      cancelAnimationFrame(animationFrameId);
+      if (typeof animationFrameId !== 'undefined') cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', handleResize);
-      renderer.dispose();
-      scene.clear();
+      if (renderer) {
+        try {
+          renderer.dispose();
+        } catch (e) {}
+      }
+      if (scene) {
+        try {
+          scene.clear();
+        } catch (e) {}
+      }
     };
   }, [selectedId, meta.imageUrl, userProfile.loveMode]);
 
@@ -419,17 +436,34 @@ export const RealHuman3DAvatar: React.FC<RealHuman3DAvatarProps> = ({
         </div>
       )}
 
-      {/* Three.js Canvas Container */}
-      <div
-        ref={mountRef}
-        className="w-full h-full relative z-10 flex items-center justify-center overflow-hidden rounded-3xl"
-      />
+      {/* Three.js Canvas Container or Fallback Animated Companion */}
+      {webGLAvailable && is3DMode ? (
+        <div
+          ref={mountRef}
+          className="w-full h-full relative z-10 flex items-center justify-center overflow-hidden rounded-3xl"
+        />
+      ) : (
+        <div className="w-full h-full relative z-10 flex items-center justify-center overflow-hidden rounded-3xl p-2">
+          <div className="relative w-full h-full max-w-[280px] max-h-[340px] rounded-3xl overflow-hidden border-2 border-pink-500/40 shadow-[0_0_30px_rgba(255,46,147,0.4)] bg-slate-900 group">
+            <img
+              src={meta.imageUrl}
+              alt={meta.name}
+              className={`w-full h-full object-cover transform transition-transform duration-500 ${
+                isSpeaking ? 'scale-105' : 'scale-100 group-hover:scale-105'
+              }`}
+            />
+            {isSpeaking && (
+              <span className="absolute inset-0 bg-pink-500/20 animate-pulse pointer-events-none" />
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 3D Real Human Companion Badge */}
       {showStatusBadge && (
         <div className="absolute bottom-2 z-20 flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900/80 backdrop-blur-md border border-pink-500/40 text-[10px] font-bold text-pink-300 shadow-[0_0_12px_rgba(255,46,147,0.4)]">
           <Rotate3d className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
-          <span>3D REAL HUMAN • {meta.bengaliName}</span>
+          <span>{webGLAvailable ? '3D REAL HUMAN' : 'LIVE COMPANION'} • {meta.bengaliName}</span>
         </div>
       )}
     </div>

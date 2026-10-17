@@ -289,6 +289,41 @@ export const GestureMapView: React.FC = () => {
     }
   }, [draggingNodeId, isPanning]);
 
+  // Global window listeners during drag/pan so fingers never lose track
+  useEffect(() => {
+    if (!draggingNodeId && !isPanning) return;
+
+    const onPointerMove = (e: PointerEvent) => {
+      handlePointerMove(e as any);
+    };
+    const onPointerUp = () => {
+      handlePointerUp();
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.cancelable) e.preventDefault();
+      handlePointerMove(e as any);
+    };
+    const onTouchEnd = () => {
+      handlePointerUp();
+    };
+
+    window.addEventListener('pointermove', onPointerMove, { passive: false });
+    window.addEventListener('pointerup', onPointerUp, { passive: false });
+    window.addEventListener('pointercancel', onPointerUp, { passive: false });
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onTouchEnd, { passive: false });
+    window.addEventListener('touchcancel', onTouchEnd, { passive: false });
+
+    return () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('touchcancel', onTouchEnd);
+    };
+  }, [draggingNodeId, isPanning, handlePointerMove, handlePointerUp]);
+
   // Reset to default layout
   const handleResetLayout = () => {
     setNodes(defaultNodes);
