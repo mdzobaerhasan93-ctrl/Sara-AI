@@ -11,12 +11,13 @@ import {
   Settings,
   Heart,
   Smartphone,
+  Bot,
 } from 'lucide-react';
 import { TabType } from './BottomNavigation';
 import { useSara } from '../../context/SaraContext';
 
 interface DesktopSidebarProps {
-  activeTab: TabType | 'memories' | 'automations' | 'permissions' | 'activity' | 'apps';
+  activeTab: TabType | 'memories' | 'automations' | 'permissions' | 'activity' | 'apps' | 'agent';
   onTabChange: (tab: any) => void;
   onOpenVoice: () => void;
 }
@@ -31,6 +32,7 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
 
   const navItems = [
     { id: 'home', label: 'Home Dashboard', icon: Home },
+    { id: 'agent', label: 'AI Agent (এআই এজেন্ট)', icon: Bot, badge: 'Active' },
     { id: 'chat', label: 'Chat with Sara', icon: MessageSquare },
     { id: 'voice', label: 'Live Voice Mode', icon: Mic, action: onOpenVoice },
     { id: 'avatar', label: '3D Human Wardrobe', icon: User },

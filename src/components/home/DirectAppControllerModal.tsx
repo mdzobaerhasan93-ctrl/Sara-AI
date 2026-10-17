@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useSara } from '../../context/SaraContext';
 import { AppInventoryService, AppDefinition, InAppAction } from '../../services/AppInventoryService';
+import { AIAgentService } from '../../services/AIAgentService';
 
 interface DirectAppControllerModalProps {
   isOpen: boolean;
@@ -110,19 +111,37 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
   };
 
   // Handle custom voice/text instruction
-  const handleRunCustomPrompt = (e: React.FormEvent) => {
+  const handleRunCustomPrompt = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customVoicePrompt.trim()) return;
+    const prompt = customVoicePrompt;
+    setCustomVoicePrompt('');
 
-    const parsed = AppInventoryService.parseCommand(customVoicePrompt);
+    // Check if it's an AI Agent Command (e.g. YouTube movie search, Facebook post comment)
+    if (AIAgentService.isAgentCommand(prompt)) {
+      setIsExecuting(true);
+      setExecutionSuccess(false);
+      speakText(`সোনা, আমি "${prompt}" নির্দেশ অনুযায়ী এআই এজেন্ট রান করছি ❤️`, 'excited');
+      
+      const agentRes = await AIAgentService.executeCommand(prompt, (step) => {
+        setExecutionSteps((prev) => [...prev, `${step.title}: ${step.detail}`]);
+      });
+
+      setExecutionSteps(agentRes.steps.map((s) => `${s.title}: ${s.detail}`));
+      setExecutionSuccess(true);
+      setIsExecuting(false);
+      speakText(agentRes.message, 'romantic');
+      return;
+    }
+
+    const parsed = AppInventoryService.parseCommand(prompt);
     if (parsed.app) {
       const targetAction = parsed.action || parsed.app.actions[0];
-      handleExecuteAction(parsed.app, targetAction, customVoicePrompt);
-      setCustomVoicePrompt('');
+      handleExecuteAction(parsed.app, targetAction, prompt);
     } else {
-      speakText(`সোনা, আমি "${customVoicePrompt}" নির্দেশটি সিস্টেমে প্রসেস করছি।`, 'caring');
-      window.open('https://www.google.com/search?q=' + encodeURIComponent(customVoicePrompt), '_blank');
-      setCustomVoicePrompt('');
+      speakText(`সোনা, আমি "${prompt}" নির্দেশটি সিস্টেমে প্রসেস করছি।`, 'caring');
+      const safeSearchUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(prompt);
+      window.open(safeSearchUrl, '_blank', 'noopener,noreferrer');
     }
   };
 

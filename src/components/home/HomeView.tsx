@@ -27,6 +27,7 @@ import {
   RefreshCw,
   Quote,
   Smartphone,
+  Bot,
 } from 'lucide-react';
 import { EmotionState } from '../../types';
 import { useSara } from '../../context/SaraContext';
@@ -39,7 +40,7 @@ import { GestureRecognitionModal } from '../gesture/GestureRecognitionModal';
 import { DirectAppControllerModal } from './DirectAppControllerModal';
 
 interface HomeViewProps {
-  onNavigate: (tab: TabType | 'memories' | 'automations' | 'permissions' | 'activity') => void;
+  onNavigate: (tab: any) => void;
   onOpenVoice: () => void;
 }
 
@@ -239,6 +240,29 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
               </div>
             </div>
             <ChevronRight className="w-3.5 h-3.5 text-cyan-400" />
+          </button>
+
+          {/* Module 3.2: AI Agent Hub */}
+          <button
+            onClick={() => onNavigate('agent')}
+            className="p-2 rounded-2xl glass-card border border-purple-500/40 hover:border-purple-400 flex items-center justify-between transition-all group active:scale-95 text-left bg-gradient-to-r from-purple-950/70 via-pink-950/40 to-[#070617] shadow-[0_0_15px_rgba(168,85,247,0.25)]"
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-purple-500/25 flex items-center justify-center text-purple-300 group-hover:scale-105 shadow-[0_0_10px_rgba(168,85,247,0.4)]">
+                <Bot className="w-4 h-4 text-purple-400" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-purple-100 flex items-center gap-1">
+                  <span>Agent</span>
+                  <span className="text-[9px] px-1 py-0.2 rounded bg-purple-500/20 text-purple-300 font-mono">AI</span>
+                </p>
+                <div className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping" />
+                  <span className="text-[10px] text-purple-300 font-bold">মুভি ও কমেন্ট</span>
+                </div>
+              </div>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-purple-400" />
           </button>
 
           {/* Module 3.5: Direct In-App Controller */}

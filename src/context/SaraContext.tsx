@@ -16,6 +16,7 @@ import {
 } from '../types';
 import { alarmAudio, checkScheduleMatch } from '../utils/alarmSound';
 import { AppInventoryService, AppDefinition, InAppAction } from '../services/AppInventoryService';
+import { AIAgentService } from '../services/AIAgentService';
 
 interface SaraContextType {
   // Assistant Status
@@ -973,15 +974,15 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // 3. Fallback for general search
-    if (q.includes('movie') || q.includes('মুভি') || q.includes('চলচ্চিত্র') || q.includes('সার্চ')) {
-      window.open('https://www.google.com/search?q=' + encodeURIComponent(command), '_blank');
-      speakText('মুভি বা তথ্য সার্চ করে দেওয়া হয়েছে সোনা! 🍿', 'excited');
-      addActivityLog({
-        title: `Screen Control: Searched "${command}"`,
-        type: 'action',
-        service: 'Device Screen Control',
-        status: 'SUCCESS',
+    // 3. AI Agent Command Handling (Movie search on YouTube, Facebook comments, etc.)
+    if (AIAgentService.isAgentCommand(command)) {
+      AIAgentService.executeCommand(command).then((res) => {
+        speakText(res.message, 'romantic');
+        addMessage({
+          role: 'model',
+          content: `${res.message}${res.payload?.searchUrl ? `\n\n🎬 [ইউটিউবে সরাসরি রেজাল্ট দেখতে এখানে ট্যাপ করুন](${res.payload.searchUrl})` : ''}`,
+          emotion: 'excited',
+        });
       });
       return true;
     }
@@ -1403,6 +1404,36 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAssistantState('THINKING');
 
     try {
+      // 0. AI Agent Command Interception (e.g. YouTube movie search, Facebook auto-comment, phone app control)
+      if (AIAgentService.isAgentCommand(content)) {
+        try {
+          const agentRes = await AIAgentService.executeCommand(content);
+          const reply = `${agentRes.message}${agentRes.payload?.searchUrl ? `\n\n🎬 [ইউটিউবে মুভি দেখতে এখানে সরাসরি ট্যাপ করুন](${agentRes.payload.searchUrl})` : ''}`;
+          
+          addMessage({
+            role: 'model',
+            content: reply,
+            emotion: 'excited',
+          });
+          setCurrentEmotion('excited');
+          setAssistantState('IDLE');
+          if (voiceSettings.autoSpeak) {
+            speakText(agentRes.message, 'romantic');
+          }
+          addActivityLog({
+            title: `AI Agent: ${agentRes.bengaliTitle}`,
+            type: 'action',
+            service: 'Autonomous Agent Engine',
+            status: 'SUCCESS',
+            details: agentRes.message,
+          });
+          setIsLoading(false);
+          return;
+        } catch (agentErr) {
+          console.warn('Agent command execution fallback:', agentErr);
+        }
+      }
+
       // High Thinking Mode request
       if (options?.isThinking) {
         const thinkRes = await fetch('/api/think', {

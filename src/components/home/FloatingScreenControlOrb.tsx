@@ -195,6 +195,28 @@ export const FloatingScreenControlOrb: React.FC<FloatingScreenControlOrbProps> =
 
             {/* Quick Actions List */}
             <div className="space-y-2">
+              {/* Option 0: AI Agent Hub */}
+              <button
+                onClick={() => {
+                  setShowQuickMenu(false);
+                  setShowAppController(true);
+                }}
+                className="w-full p-2.5 rounded-2xl bg-gradient-to-r from-purple-900/60 via-pink-900/50 to-slate-900 border border-purple-500/40 hover:border-purple-400 text-left flex items-center justify-between group active:scale-98 transition-all"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-purple-500/25 flex items-center justify-center text-purple-400 group-hover:scale-105 transition-transform shadow-[0_0_12px_rgba(168,85,247,0.4)]">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-100 group-hover:text-purple-300">
+                      এআই এজেন্ট মুভি ও অ্যাপ কন্ট্রোলার
+                    </p>
+                    <p className="text-[10px] text-slate-400">ইউটিউব মুভি সার্চ, ফেসবুক অটো-কমেন্ট</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-purple-400" />
+              </button>
+
               {/* Option 1: Direct In-App Controller */}
               <button
                 onClick={() => {

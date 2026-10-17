@@ -17,10 +17,11 @@ import { Download, Sparkles } from 'lucide-react';
 import { FloatingScreenControlOrb } from './components/home/FloatingScreenControlOrb';
 import { AlarmRingingModal } from './components/automations/AlarmRingingModal';
 import { ConnectedAppsView } from './components/apps/ConnectedAppsView';
+import { AIAgentHubView } from './components/agent/AIAgentHubView';
 
 const MainLayout: React.FC = () => {
   const { userProfile, speakText, setOnOpenVoiceModal } = useSara();
-  const [activeTab, setActiveTab] = useState<TabType | 'memories' | 'automations' | 'permissions' | 'activity' | 'apps'>('home');
+  const [activeTab, setActiveTab] = useState<TabType | 'memories' | 'automations' | 'permissions' | 'activity' | 'apps' | 'agent'>('home');
   const [isVoiceOpen, setIsVoiceOpen] = useState<boolean>(false);
 
   const handleOpenVoice = useCallback(() => {
@@ -110,6 +111,8 @@ const MainLayout: React.FC = () => {
         return <AutomationsView />;
       case 'apps':
         return <ConnectedAppsView />;
+      case 'agent':
+        return <AIAgentHubView />;
       case 'permissions':
         return <PermissionCenterView />;
       case 'activity':

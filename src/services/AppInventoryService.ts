@@ -480,36 +480,25 @@ export class AppInventoryService {
     }
 
     // 2. If on Mobile:
-    // If it's a standard web URL, open directly
+    // If it's a standard web URL, open in a new tab safely
     if (app.launchUri?.startsWith('http')) {
-      window.open(app.launchUri, '_blank');
+      window.open(app.launchUri, '_blank', 'noopener,noreferrer');
       return true;
     }
 
     // If it's a mobile URI scheme (e.g. instagram://, fb://, whatsapp://, etc.):
-    // DO NOT use window.open(scheme, '_blank') because it opens an orphaned blank black tab!
-    // Instead, use a hidden iframe with fallback to web URL:
+    // Dispatch via anchor click without replacing current app or creating an orphaned about:blank tab:
     try {
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      iframe.src = app.launchUri;
-      document.body.appendChild(iframe);
-
-      const start = Date.now();
-      setTimeout(() => {
-        try {
-          if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-        } catch (e) {}
-
-        // If the native app didn't take over within 1.5s, fall back to web
-        if (Date.now() - start < 2000 && app.webFallbackUrl) {
-          window.location.href = app.webFallbackUrl;
-        }
-      }, 1500);
+      const a = document.createElement('a');
+      a.href = app.launchUri;
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
       return true;
     } catch (e) {
       if (app.webFallbackUrl) {
-        window.location.href = app.webFallbackUrl;
+        window.open(app.webFallbackUrl, '_blank', 'noopener,noreferrer');
         return true;
       }
     }
