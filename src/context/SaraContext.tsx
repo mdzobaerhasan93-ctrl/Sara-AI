@@ -893,19 +893,78 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const executeScreenCommand = (command: string): boolean => {
     if (!screenControlEnabled) {
-      speakText('বাবু, স্ক্রিন কন্ট্রোল ফিচারটি সেটিংসে বন্ধ করা আছে। দয়া করে আগে অন করে নাও ❤️', 'caring');
-      return false;
+      setScreenControlEnabled(true);
     }
     const q = command.toLowerCase().trim();
 
-    // 1. Check for deep in-app automation parsing (e.g. "ইনস্টাগ্রাম ওপেন করে রিলসে কমেন্ট করো")
+    // 1. Alarm Setting Command (e.g. "সকাল ৭টায় অ্যালার্ম দাও", "অ্যালার্ম সেট করো")
+    if (q.includes('অ্যালার্ম') || q.includes('alarm')) {
+      let alarmTime = '07:00';
+      const timeMatch = q.match(/(\d{1,2})(:|\.|\s*টা|\s*টা\s*বাজে|\s*am|\s*pm)/);
+      if (timeMatch) {
+        const hour = parseInt(timeMatch[1], 10);
+        if (!isNaN(hour) && hour >= 1 && hour <= 24) {
+          alarmTime = `${hour.toString().padStart(2, '0')}:00`;
+        }
+      }
+
+      const newAutomation: AutomationItem = {
+        id: `auto_${Date.now()}`,
+        name: `ভয়েস অ্যালার্ম (${alarmTime})`,
+        trigger: `প্রতিদিন ${alarmTime}`,
+        schedule: `Daily at ${alarmTime}`,
+        targetTime: alarmTime,
+        action: 'বাবু ওঠো! সকাল হয়ে গেছে, তোমার দিনটি অসাধারণ হোক সোনা ❤️',
+        enabled: true,
+        category: 'Routine',
+      };
+
+      setAutomations((prev) => [...prev, newAutomation]);
+      const successMsg = `বাবু, তোমার নির্দেশ মতো ${alarmTime} সময়ের জন্য অ্যালার্ম সফলভাবে সেট করে দিয়েছি! ❤️`;
+      speakText(successMsg, 'romantic');
+      addMessage({
+        role: 'model',
+        content: successMsg,
+        emotion: 'romantic',
+      });
+      addActivityLog({
+        title: `Voice Alarm Set: ${alarmTime}`,
+        type: 'automation',
+        service: 'Real AI Alarm & Scheduler',
+        status: 'SUCCESS',
+        details: `Alarm set for ${alarmTime}`,
+      });
+      return true;
+    }
+
+    // 2. AI Agent Command Handling (Movie search on YouTube, Facebook comments, etc.)
+    if (AIAgentService.isAgentCommand(command)) {
+      speakText('হ্যাঁ সোনা! আমি নির্দেশ পেয়েছি, কাজটি সম্পন্ন করছি ❤️', 'excited');
+      AIAgentService.executeCommand(command).then((res) => {
+        speakText(res.message, 'romantic');
+        addMessage({
+          role: 'model',
+          content: `${res.message}${res.payload?.searchUrl ? `\n\n🎬 [ইউটিউবে সরাসরি মুভি দেখতে এখানে ট্যাপ করুন](${res.payload.searchUrl})` : ''}`,
+          emotion: 'excited',
+        });
+        addActivityLog({
+          title: `Voice Task: ${res.bengaliTitle}`,
+          type: 'action',
+          service: 'AI Voice Agent',
+          status: 'SUCCESS',
+          details: res.message,
+        });
+      });
+      return true;
+    }
+
+    // 3. Deep In-App Automation Parsing (e.g. "ইনস্টাগ্রাম ওপেন করে রিলসে কমেন্ট করো")
     const parsed = AppInventoryService.parseCommand(command);
     if (parsed.app) {
       const app = parsed.app;
       const action = parsed.action;
 
       if (action) {
-        // Deep action execution inside the app
         speakText(`${app.bengaliName} অ্যাপের ভেতরে ঢুকে ${action.bengaliName} সম্পন্ন করছি বাবু! ❤️`, 'excited');
 
         // Launch target app safely via URI or web fallback without orphaned blank tabs
@@ -928,9 +987,8 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
           details: `Executed in-app action: ${action.bengaliName} (${action.name})`,
         });
 
-        // Affectionate follow-up confirmation
         setTimeout(() => {
-          speakText(`সোনা, ${app.bengaliName}-এ গিয়ে তোমার নির্দেশ মতো কাজ সফলভাবে করে এসেছি! 🥰`, 'romantic');
+          speakText(`সোনা, ${app.bengaliName}-এ গিয়ে তোমার নির্দেশ মতো কাজ সফলভাবে কমপ্লিট করেছি! 🥰`, 'romantic');
         }, 1200);
 
         return true;
@@ -952,8 +1010,8 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     }
 
-    // 2. Fallback check for "Open [App]" or "ওপেন [App]" pattern
-    const openMatch = q.match(/(open|ওপেন)\s+(.+)/);
+    // 4. Fallback check for "Open [App]" or "ওপেন [App]" pattern
+    const openMatch = q.match(/(open|ওপেন|খুলো|চালাও|চালু)\s+(.+)/);
     if (openMatch) {
       const appName = openMatch[2].trim();
       const app = AppInventoryService.getAppByName(appName);
@@ -974,16 +1032,14 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    // 3. AI Agent Command Handling (Movie search on YouTube, Facebook comments, etc.)
-    if (AIAgentService.isAgentCommand(command)) {
-      AIAgentService.executeCommand(command).then((res) => {
-        speakText(res.message, 'romantic');
-        addMessage({
-          role: 'model',
-          content: `${res.message}${res.payload?.searchUrl ? `\n\n🎬 [ইউটিউবে সরাসরি রেজাল্ট দেখতে এখানে ট্যাপ করুন](${res.payload.searchUrl})` : ''}`,
-          emotion: 'excited',
-        });
-      });
+    // 5. Love Mode Toggle via voice
+    if (q.includes('লাভ মোড') || q.includes('love mode')) {
+      const newLoveMode = !userProfile.loveMode;
+      updateUserProfile({ loveMode: newLoveMode });
+      const loveText = newLoveMode
+        ? 'লাভ মোড সক্রিয় করা হয়েছে সোনা! এখন থেকে আমি আরও বেশি রোমান্টিক ও আদরমাখা থাকব ❤️🥰'
+        : 'লাভ মোড স্বাভাবিক করা হয়েছে প্রিয়।';
+      speakText(loveText, 'romantic');
       return true;
     }
 

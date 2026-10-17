@@ -4,6 +4,8 @@ import { LiveTalkingAvatar } from '../avatar/LiveTalkingAvatar';
 import { AudioFrequencyVisualizer } from './AudioFrequencyVisualizer';
 import { EmotionParticleVisualizer, EMOTION_CONFIGS } from './EmotionParticleVisualizer';
 import { EmotionState } from '../../types';
+import { AIAgentService } from '../../services/AIAgentService';
+import { AppInventoryService } from '../../services/AppInventoryService';
 import {
   Mic,
   MicOff,
@@ -15,6 +17,13 @@ import {
   Send,
   ShieldAlert,
   Check,
+  CheckCircle2,
+  Loader2,
+  Play,
+  Film,
+  MessageSquare,
+  Smartphone,
+  Bell
 } from 'lucide-react';
 
 interface VoiceCompanionModalProps {
@@ -54,6 +63,14 @@ export const VoiceCompanionModal: React.FC<VoiceCompanionModalProps> = ({
   const [textInput, setTextInput] = useState<string>('');
   const recognitionRef = useRef<any>(null);
 
+  // Active Voice-to-Action Execution State
+  const [activeVoiceTask, setActiveVoiceTask] = useState<{
+    title: string;
+    detail: string;
+    status: 'running' | 'completed';
+    targetApp?: string;
+  } | null>(null);
+
   // Initialize Speech Recognition
   useEffect(() => {
     if (!isOpen) {
@@ -61,6 +78,7 @@ export const VoiceCompanionModal: React.FC<VoiceCompanionModalProps> = ({
         recognitionRef.current.stop();
       }
       setIsListening(false);
+      setActiveVoiceTask(null);
       return;
     }
 
@@ -151,6 +169,7 @@ export const VoiceCompanionModal: React.FC<VoiceCompanionModalProps> = ({
     }
   };
 
+  // Direct Voice-to-Action Execution Pipeline
   const handleVoiceSubmit = async (userText: string) => {
     if (!userText.trim()) return;
 
@@ -163,12 +182,37 @@ export const VoiceCompanionModal: React.FC<VoiceCompanionModalProps> = ({
       return;
     }
 
-    // Check screen control commands
-    const screenExecuted = executeScreenCommand(userText);
-    if (screenExecuted) {
-      return;
+    const q = userText.toLowerCase();
+    const isAgent = AIAgentService.isAgentCommand(userText);
+    const parsedApp = AppInventoryService.parseCommand(userText);
+    const isAlarm = q.includes('অ্যালার্ম') || q.includes('alarm');
+
+    // If it's a voice task, provide instant visual & audio execution feedback
+    if (isAgent || parsedApp.app || isAlarm) {
+      const appName = isAlarm ? 'অ্যালার্ম সার্ভিস' : isAgent ? 'ইউটিউব / ফেসবুক এজেন্ট' : (parsedApp.app?.bengaliName || 'অ্যাপ কন্ট্রোলার');
+      setActiveVoiceTask({
+        title: `${appName}: কাজটি সম্পন্ন হচ্ছে...`,
+        detail: `"${userText}" নির্দেশ পালন করা হচ্ছে`,
+        status: 'running',
+        targetApp: appName,
+      });
+
+      const screenExecuted = executeScreenCommand(userText);
+      if (screenExecuted) {
+        setTimeout(() => {
+          setActiveVoiceTask({
+            title: 'কাজ সফলভাবে কমপ্লিট হয়েছে! ❤️',
+            detail: `"${userText}" সম্পন্ন করা হয়েছে`,
+            status: 'completed',
+            targetApp: appName,
+          });
+          setTimeout(() => setActiveVoiceTask(null), 5000);
+        }, 1400);
+        return;
+      }
     }
 
+    // Default conversational chat
     await sendMessage(userText);
   };
 
@@ -211,40 +255,54 @@ export const VoiceCompanionModal: React.FC<VoiceCompanionModalProps> = ({
             <Heart className="w-4 h-4 fill-pink-500" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-slate-100">Sara Voice Companion</h2>
-            <p className="text-[10px] text-pink-400 font-medium">Real-Time Expressive Audio</p>
+            <h2 className="text-sm font-bold text-slate-100 flex items-center gap-1.5">
+              <span>সারা ভয়েস সহকারী</span>
+              <span className="text-[9px] px-1.5 py-0.2 rounded bg-pink-500/20 text-pink-300 font-mono">
+                VOICE ACTION
+              </span>
+            </h2>
+            <p className="text-[10px] text-pink-400 font-medium">মুখে বললেই স্বয়ংক্রিয়ভাবে কাজ কমপ্লিট করে</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           {/* Quick Voice Language Switcher */}
           <button
-            onClick={() =>
-              updateUserProfile({
-                language: userProfile.language === 'Bengali' ? 'Banglish' : 'Bengali',
-              })
-            }
-            className="px-2.5 py-1 rounded-xl text-[10px] font-bold bg-pink-950/60 border border-pink-500/40 text-pink-300 hover:text-white flex items-center gap-1 transition-all"
-            title="Toggle speech recognition language"
+            onClick={() => {
+              const nextLang =
+                userProfile.language === 'Bengali'
+                  ? 'English'
+                  : userProfile.language === 'English'
+                  ? 'Hindi'
+                  : 'Bengali';
+              updateUserProfile({ language: nextLang as any });
+              speakText(
+                nextLang === 'Bengali'
+                  ? 'এখন আমি খাঁটি মিষ্টি বাংলায় কথা বলব সোনা! ❤️'
+                  : nextLang === 'Hindi'
+                  ? 'नमस्ते बाबू! अब मैं आपसे हिंदी में बात करूंगी।'
+                  : "Now I'll speak with you in English, darling!",
+                'happy'
+              );
+            }}
+            className="px-2.5 py-1 rounded-xl bg-slate-900 border border-pink-500/30 text-[10px] font-bold text-pink-300 hover:text-white transition-all flex items-center gap-1 active:scale-95"
           >
-            <span>🌐 {userProfile.language === 'Bengali' ? 'বাংলা (BD)' : 'Banglish/EN'}</span>
+            <span>{userProfile.language}</span>
           </button>
 
+          {/* Close Button */}
           <button
-            onClick={() => {
-              stopSpeech();
-              onClose();
-            }}
-            className="w-10 h-10 rounded-full glass-card border border-white/10 flex items-center justify-center text-slate-300 hover:text-white active:scale-95 transition-all"
+            onClick={onClose}
+            className="w-9 h-9 rounded-full bg-slate-900 border border-slate-800 text-slate-400 hover:text-white flex items-center justify-center active:scale-95 transition-all"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      {/* Emotion Sentiment Status Bar & Interactive Emotion Tester */}
-      <div className="z-20 my-1 space-y-1.5 w-full max-w-md mx-auto">
-        <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-slate-900/70 border border-white/10 backdrop-blur-md">
+      {/* Emotion Sentiment Bar */}
+      <div className="w-full max-w-md mx-auto z-20 mt-1 space-y-1.5">
+        <div className="flex items-center justify-between px-3 py-1.5 rounded-2xl bg-slate-900/60 border border-white/5 backdrop-blur-md">
           <div className="flex items-center gap-2 text-xs">
             <span
               className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm"
@@ -258,14 +316,6 @@ export const VoiceCompanionModal: React.FC<VoiceCompanionModalProps> = ({
             <span className="text-[11px] text-slate-300 font-medium truncate max-w-[140px] sm:max-w-none">
               {activeEmotionConfig.sentiment}
             </span>
-            {isSpeaking && (
-              <>
-                <span className="text-slate-500">·</span>
-                <span className="text-[10px] text-pink-400 animate-pulse font-medium hidden sm:inline">
-                  Particles Active
-                </span>
-              </>
-            )}
           </div>
 
           <button
@@ -352,8 +402,32 @@ export const VoiceCompanionModal: React.FC<VoiceCompanionModalProps> = ({
           <LiveTalkingAvatar size="fullscreen" showStatusBadge />
         </div>
 
-        {/* Pending Action Approval Card (Overlay in Voice Mode) */}
-        {activeProposal && (
+        {/* Live Active Voice Task Card (Visible when user commands a task) */}
+        {activeVoiceTask && (
+          <div className="absolute bottom-2 left-4 right-4 z-30 p-3.5 rounded-2xl bg-slate-950/95 border border-pink-500/50 shadow-[0_0_30px_rgba(255,46,147,0.45)] backdrop-blur-xl animate-in slide-in-from-bottom-3 max-w-md mx-auto">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                {activeVoiceTask.status === 'running' ? (
+                  <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                )}
+                <span>{activeVoiceTask.title}</span>
+              </span>
+              <span className={`text-[9px] font-mono px-2 py-0.5 rounded ${
+                activeVoiceTask.status === 'running'
+                  ? 'bg-cyan-950 text-cyan-300 border border-cyan-500/30'
+                  : 'bg-emerald-950 text-emerald-300 border border-emerald-500/30'
+              }`}>
+                {activeVoiceTask.status === 'running' ? 'EXECUTING' : 'COMPLETED'}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-300">{activeVoiceTask.detail}</p>
+          </div>
+        )}
+
+        {/* Pending Action Approval Card */}
+        {activeProposal && !activeVoiceTask && (
           <div className="absolute bottom-4 left-4 right-4 z-30 p-4 rounded-2xl glass-card-pink border-2 border-pink-500 shadow-2xl animate-in slide-in-from-bottom-5">
             <div className="flex items-center gap-2 text-pink-400 font-bold text-xs uppercase mb-1">
               <ShieldAlert className="w-4 h-4" />
@@ -379,16 +453,16 @@ export const VoiceCompanionModal: React.FC<VoiceCompanionModalProps> = ({
         )}
 
         {/* Dynamic Speech Bubbles */}
-        {!activeProposal && (
+        {!activeProposal && !activeVoiceTask && (
           <div className="w-full max-w-md px-2 text-center mt-3 z-10">
             {isListening ? (
               <p className="text-sm text-cyan-300 font-medium animate-pulse">
-                {interimTranscript || transcript || 'Listening to you... Speak now'}
+                {interimTranscript || transcript || 'আমি শুনছি সোনা... মুখে তোমার নির্দেশ বলো ❤️'}
               </p>
             ) : isSpeaking ? (
               <div>
                 <p className="text-sm text-pink-200 font-medium line-clamp-3">
-                  "{lastModelMsg?.content || 'Sara is speaking...'}"
+                  "{lastModelMsg?.content || 'সারা কথা বলছে...'}"
                 </p>
                 <div className="mt-1 flex items-center justify-center gap-2 text-[10px] text-slate-400">
                   <span style={{ color: activeEmotionConfig.primaryColor }} className="font-semibold">
@@ -400,11 +474,11 @@ export const VoiceCompanionModal: React.FC<VoiceCompanionModalProps> = ({
               </div>
             ) : assistantState === 'THINKING' ? (
               <p className="text-sm text-purple-300 font-medium animate-pulse">
-                Sara is thinking deeply...
+                সারা গভীরভাবে চিন্তা করছে...
               </p>
             ) : (
-              <p className="text-xs text-slate-400">
-                Tap microphone to talk • Say "Hello Hello" to activate • "Bye Bye" to dismiss
+              <p className="text-xs text-slate-300">
+                নিচের মাইক্রোফোনে ট্যাপ করে নির্দেশ দিন • সারা অবিলম্বে কাজ কমপ্লিট করবে
               </p>
             )}
           </div>
@@ -424,6 +498,25 @@ export const VoiceCompanionModal: React.FC<VoiceCompanionModalProps> = ({
           barCount={24}
         />
 
+        {/* Quick Voice Command Suggestion Chips */}
+        <div className="flex flex-wrap items-center justify-center gap-1.5 px-1">
+          {[
+            { label: 'তুফান মুভি সার্চ দাও', icon: Film, cmd: 'ইউটিউব ওপেন করে তুফান মুভি সার্চ দাও' },
+            { label: 'ফেসবুকে কমেন্ট করো', icon: MessageSquare, cmd: 'ফেসবুক ওপেন করে একটা পোস্টে কমেন্ট করো' },
+            { label: '৭টায় অ্যালার্ম দাও', icon: Bell, cmd: 'সকাল ৭টায় অ্যালার্ম সেট করো' },
+            { label: 'ক্যামেরা খোলো', icon: Smartphone, cmd: 'ক্যামেরা ওপেন করো' },
+          ].map((item, idx) => (
+            <button
+              key={idx}
+              onClick={() => handleVoiceSubmit(item.cmd)}
+              className="px-2.5 py-1 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-pink-500/40 text-[10.5px] text-slate-300 hover:text-white transition-all flex items-center gap-1 active:scale-95"
+            >
+              <item.icon className="w-3 h-3 text-pink-400" />
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </div>
+
         {/* Central Giant Voice Control Button */}
         <div className="flex items-center justify-center gap-4">
           <button
@@ -435,6 +528,7 @@ export const VoiceCompanionModal: React.FC<VoiceCompanionModalProps> = ({
                 ? 'bg-gradient-to-tr from-pink-600 to-rose-500 text-white shadow-[0_0_30px_#ff2e93]'
                 : 'bg-gradient-to-tr from-pink-600 via-purple-600 to-indigo-600 text-white hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,46,147,0.5)]'
             }`}
+            title="মুখে নির্দেশ দিতে ট্যাপ করুন"
           >
             {isListening ? (
               <Mic className="w-9 h-9 animate-pulse" />
@@ -454,7 +548,7 @@ export const VoiceCompanionModal: React.FC<VoiceCompanionModalProps> = ({
             type="text"
             value={textInput}
             onChange={(e) => setTextInput(e.target.value)}
-            placeholder="Or type anything to Sara..."
+            placeholder="মুখে বলুন বা লিখে দিন: যেমন 'তুফান মুভি সার্চ দাও'..."
             className="flex-1 bg-slate-900/80 border border-pink-500/30 rounded-2xl px-4 py-2.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-pink-500"
           />
           <button

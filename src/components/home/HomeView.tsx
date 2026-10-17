@@ -117,6 +117,12 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
     toggleAutomation,
     runAutomation,
     addMemory,
+    coinBalance,
+    claimDailyReward,
+    isDailyRewardClaimed,
+    dailyRewardCountdown,
+    dailyStreak,
+    watchRewardedAd,
   } = useSara();
 
   const [coreViewMode, setCoreViewMode] = useState<'3d' | 'orb'>('3d');
@@ -426,6 +432,65 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
           >
             <span>START SARA</span>
             <Mic className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* 1.5 DAILY REWARD & POINTS SYSTEM CARD */}
+      <div className="rounded-3xl glass-card-pink border border-pink-500/40 p-4 relative overflow-hidden shadow-[0_0_20px_rgba(255,46,147,0.15)] flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="absolute inset-0 bg-gradient-to-r from-pink-950/40 via-purple-950/20 to-transparent pointer-events-none" />
+        <div className="relative z-10 flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-pink-600 flex items-center justify-center text-white text-2xl shadow-lg shrink-0">
+            🪙
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-white">ডেইলি রিওয়ার্ড ও কয়েন পয়েন্ট</h3>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 font-bold border border-pink-500/30">
+                🔥 {dailyStreak} দিন Streak
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 mt-0.5">
+              ব্যালেন্স: <strong className="text-amber-300 font-mono text-sm">{coinBalance} Coins</strong> • প্রতিদিন রিওয়ার্ড ক্লেইম করুন!
+            </p>
+          </div>
+        </div>
+
+        <div className="relative z-10 flex items-center gap-2 w-full sm:w-auto justify-end">
+          <button
+            onClick={() => {
+              const claimed = claimDailyReward();
+              if (!claimed) {
+                speakText('আজকের ডেইলি রিওয়ার্ড ইতিমধ্যে ক্লেইম করা হয়েছে বাবু! আগামীকালের জন্য অপেক্ষা করো ❤️', 'caring');
+              }
+            }}
+            disabled={isDailyRewardClaimed}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md ${
+              isDailyRewardClaimed
+                ? 'bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed'
+                : 'bg-gradient-to-r from-amber-500 to-pink-600 hover:from-amber-400 hover:to-pink-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.4)] active:scale-95'
+            }`}
+          >
+            {isDailyRewardClaimed ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                <span>আজ ক্লেইমড ({dailyRewardCountdown})</span>
+              </>
+            ) : (
+              <>
+                <span>🎁 রিওয়ার্ড নিন (+১০ কয়েন)</span>
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={() => {
+              watchRewardedAd();
+              speakText('বিজ্ঞাপনে ক্লিক করে ২০ কয়েন বোনাস পেয়ে গেছো বাবু! দারুণ 🎉', 'excited');
+            }}
+            className="px-3 py-2 rounded-xl text-xs font-bold bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-500/40 transition-all active:scale-95 flex items-center gap-1"
+          >
+            <span>📺 অ্যাড দেখে কয়েন</span>
           </button>
         </div>
       </div>
