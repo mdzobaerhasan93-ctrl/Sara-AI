@@ -24,7 +24,14 @@ import {
   Copy,
   Info,
   ShieldCheck,
-  Video
+  Video,
+  Code2,
+  Layers,
+  FileCode,
+  Maximize2,
+  Cpu,
+  Globe,
+  Tv
 } from 'lucide-react';
 
 export const AIAgentHubView: React.FC = () => {
@@ -41,6 +48,11 @@ export const AIAgentHubView: React.FC = () => {
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
   const [currentStep, setCurrentStep] = useState<AgentActionStep | null>(null);
   const [executionResult, setExecutionResult] = useState<AgentExecutionResult | null>(null);
+
+  // Autonomous App Builder State
+  const [builderTab, setBuilderTab] = useState<'preview' | 'code' | 'architecture' | 'steps'>('preview');
+  const [selectedFileIdx, setSelectedFileIdx] = useState<number>(0);
+  const [copiedAppCode, setCopiedAppCode] = useState<boolean>(false);
 
   // Dynamic Movie Search State
   const [movieQuery, setMovieQuery] = useState<string>('তুফান');
@@ -336,12 +348,12 @@ export const AIAgentHubView: React.FC = () => {
         {/* Quick Example Prompts */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
           {[
-            'ইউটিউব ওপেন করে একটা মুভি সার্চ দাও',
-            'ফেসবুক ওপেন করে একটা পোস্টে কমেন্ট করো',
-            'ইউটিউবে তুফান মুভি সার্চ দাও',
-            'হোয়াটসঅ্যাপে সোনাকে মিষ্টি বার্তা পাঠাও',
-            'ক্যামেরা ওপেন করে ছবি তোলো',
-            'গুগল ম্যাপে নিকটস্থ রেস্তোরাঁ খোঁজো',
+            'গুগল স্টুডিও অন করে একটা অ্যাপ বানাও 🚀',
+            'একটি রিয়েল-টাইম আবহাওয়া ড্যাশবোর্ড বানাও 🌤️',
+            'একটি সাইন্টিফিক ক্যালকুলেটর অ্যাপ তৈরি করো 🧮',
+            'ইউটিউবে তুফান মুভি সার্চ দাও 🎬',
+            'ফেসবুক ওপেন করে একটা পোস্টে কমেন্ট করো 💬',
+            'হোয়াটসঅ্যাপে সোনাকে মিষ্টি বার্তা পাঠাও 💌',
           ].map((prompt, idx) => (
             <button
               key={idx}
@@ -365,7 +377,7 @@ export const AIAgentHubView: React.FC = () => {
             value={commandInput}
             onChange={(e) => setCommandInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleRunCommand()}
-            placeholder="উদা: ইউটিউব ওপেন করে প্রিয়তমা মুভি সার্চ দাও..."
+            placeholder="উদা: গুগল স্টুডিও অন করে একটা অ্যাপ বানাও বা যেকোনো নির্দেশ লিখুন..."
             className="flex-1 px-4 py-2.5 rounded-2xl bg-black/60 border border-slate-700 text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-cyan-400"
           />
           <button
@@ -391,18 +403,217 @@ export const AIAgentHubView: React.FC = () => {
 
         {/* Execution Result Box */}
         {executionResult && !isExecuting && (
-          <div className="p-4 rounded-2xl bg-slate-950/90 border border-emerald-500/35 space-y-3 animate-in fade-in">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>{executionResult.bengaliTitle}</span>
-              </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-500/30">
-                100% SUCCESS
-              </span>
-            </div>
+          <div className="space-y-3 animate-in fade-in">
+            {executionResult.type === 'autonomous_builder' && executionResult.payload ? (
+              <div className="rounded-3xl bg-slate-950/95 border border-purple-500/40 p-4 sm:p-5 shadow-[0_0_40px_rgba(168,85,247,0.25)] space-y-4">
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="text-[10px] font-mono font-bold text-pink-400 uppercase">
+                        AI MULTI-MODEL APP SUITE
+                      </span>
+                    </div>
+                    <h3 className="text-base font-bold text-white mt-0.5">{executionResult.bengaliTitle}</h3>
+                    <p className="text-xs text-slate-400">{executionResult.title}</p>
+                  </div>
 
-            <p className="text-slate-200 text-xs leading-relaxed">{executionResult.message}</p>
+                  {/* Tech stack tags */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {executionResult.payload.techStack?.map((tech, idx) => (
+                      <span key={idx} className="text-[10px] px-2 py-0.5 rounded-lg bg-purple-950/80 text-purple-300 border border-purple-500/30 font-medium">
+                        {tech}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Tab Navigation */}
+                <div className="flex items-center gap-2 border-b border-slate-800/80 pb-2 overflow-x-auto">
+                  <button
+                    onClick={() => setBuilderTab('preview')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                      builderTab === 'preview'
+                        ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-md'
+                        : 'bg-slate-900 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    <span>📱 লাইভ অ্যাপ স্যান্ডবক্স (Live App)</span>
+                  </button>
+
+                  <button
+                    onClick={() => setBuilderTab('code')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                      builderTab === 'code'
+                        ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-md'
+                        : 'bg-slate-900 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Code2 className="w-3.5 h-3.5" />
+                    <span>💻 সোর্স কোড ({executionResult.payload.files?.length || 2} ফাইলস)</span>
+                  </button>
+
+                  <button
+                    onClick={() => setBuilderTab('architecture')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                      builderTab === 'architecture'
+                        ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-md'
+                        : 'bg-slate-900 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Cpu className="w-3.5 h-3.5" />
+                    <span>🧠 মাল্টি-মডেল আর্কিটেকচার</span>
+                  </button>
+
+                  <button
+                    onClick={() => setBuilderTab('steps')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ${
+                      builderTab === 'steps'
+                        ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-md'
+                        : 'bg-slate-900 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>📋 এক্সেকিউশন স্টেপস</span>
+                  </button>
+                </div>
+
+                {/* Tab 1: Live Interactive App Preview */}
+                {builderTab === 'preview' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+                      <span>স্বয়ংক্রিয়ভাবে জেনারেট হওয়া লাইভ অ্যাপ নিচে সরাসরি ব্যবহার করুন:</span>
+                      <button
+                        onClick={() => {
+                          const w = window.open('', '_blank');
+                          if (w) {
+                            w.document.write(executionResult.payload?.livePreviewHtml || '');
+                            w.document.close();
+                          }
+                        }}
+                        className="text-pink-400 hover:underline flex items-center gap-1 font-bold"
+                      >
+                        <Maximize2 className="w-3.5 h-3.5" />
+                        <span>নতুন ট্যাবে বড় করে খুলুন</span>
+                      </button>
+                    </div>
+
+                    <div className="w-full rounded-2xl overflow-hidden border border-pink-500/30 bg-slate-950 shadow-2xl relative min-h-[420px] max-h-[520px]">
+                      <iframe
+                        title="Live Autonomous App Sandbox"
+                        srcDoc={executionResult.payload.livePreviewHtml}
+                        sandbox="allow-scripts allow-modals allow-same-origin allow-forms"
+                        className="w-full h-[450px] border-none block"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab 2: Source Code */}
+                {builderTab === 'code' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-1.5">
+                        {executionResult.payload.files?.map((f, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setSelectedFileIdx(i)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-mono transition-all flex items-center gap-1.5 ${
+                              selectedFileIdx === i
+                                ? 'bg-pink-600 text-white font-bold shadow-sm'
+                                : 'bg-slate-900 text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            <FileCode className="w-3.5 h-3.5" />
+                            <span>{f.fileName}</span>
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          const code = executionResult.payload?.files?.[selectedFileIdx]?.content || '';
+                          if (navigator?.clipboard) {
+                            navigator.clipboard.writeText(code);
+                            setCopiedAppCode(true);
+                            speakText('সম্পূর্ণ সোর্স কোড ক্লিপবোর্ডে কপি করা হয়েছে সোনা!', 'happy');
+                            setTimeout(() => setCopiedAppCode(false), 2500);
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-500/40 text-xs font-bold flex items-center gap-1 transition-all active:scale-95"
+                      >
+                        {copiedAppCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedAppCode ? 'কপি হয়েছে!' : 'কোড কপি করুন'}</span>
+                      </button>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-[#030209] border border-slate-800 overflow-x-auto max-h-[400px]">
+                      <pre className="text-xs font-mono text-pink-200/90 leading-relaxed whitespace-pre">
+                        {executionResult.payload.files?.[selectedFileIdx]?.content || '// No code available'}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab 3: Multi-Model Architecture */}
+                {builderTab === 'architecture' && (
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-2xl bg-slate-900/80 border border-purple-500/30 space-y-2">
+                      <h4 className="text-xs font-bold text-pink-300">সিস্টেম আর্কিটেকচার সামারি (System Summary):</h4>
+                      <p className="text-xs text-slate-300 leading-relaxed">{executionResult.payload.summary}</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-bold text-white">যুক্ত থাকা এআই মডেল ও দায়িত্ব (Ensemble Models):</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        {executionResult.payload.modelsInvolved?.map((mod, i) => (
+                          <div key={i} className="p-3 rounded-2xl bg-slate-900/60 border border-slate-800 text-xs space-y-1">
+                            <div className="flex items-center gap-1.5 text-cyan-300 font-bold">
+                              <Cpu className="w-3.5 h-3.5" />
+                              <span>Model {i + 1}</span>
+                            </div>
+                            <p className="text-slate-300 text-[11px] font-mono">{mod}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab 4: Steps */}
+                {builderTab === 'steps' && (
+                  <div className="space-y-2">
+                    {executionResult.steps.map((st, i) => (
+                      <div key={i} className="p-3 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-start gap-3 text-xs">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <p className="font-bold text-white">{st.title}</p>
+                            <span className="text-[10px] text-slate-500 font-mono">{st.timestamp || 'Executed'}</span>
+                          </div>
+                          <p className="text-slate-400 text-[11px] mt-0.5">{st.detail}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-4 rounded-2xl bg-slate-950/90 border border-emerald-500/35 space-y-3 animate-in fade-in">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>{executionResult.bengaliTitle}</span>
+                  </span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-500/30">
+                    100% SUCCESS
+                  </span>
+                </div>
+                <p className="text-slate-200 text-xs leading-relaxed">{executionResult.message}</p>
+              </div>
+            )}
           </div>
         )}
       </div>

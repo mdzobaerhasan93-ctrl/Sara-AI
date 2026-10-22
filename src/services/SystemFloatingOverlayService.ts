@@ -209,9 +209,12 @@ export class SystemFloatingOverlayService {
         if (!video) {
           video = document.createElement('video');
           video.style.position = 'fixed';
-          video.style.width = '1px';
-          video.style.height = '1px';
-          video.style.opacity = '0.001';
+          video.style.bottom = '10px';
+          video.style.right = '10px';
+          video.style.width = '120px';
+          video.style.height = '120px';
+          video.style.opacity = '0.02';
+          video.style.zIndex = '-1';
           video.style.pointerEvents = 'none';
           document.body.appendChild(video);
           this.pipVideo = video;

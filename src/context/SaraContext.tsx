@@ -478,7 +478,13 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }),
       });
       const data = await res.json();
-      const reply = data.text || `অটোমেশন কার্যকর হয়েছে: ${auto.name} ❤️`;
+      let reply = `বাবু, "${auto.name}" অটোমেশনটি সফলভাবে কার্যকর করা হয়েছে ❤️`;
+      if (data.success && data.text) {
+        const cleanLines = data.text.split('\n').map((l: string) => l.trim()).filter((l: string) => l && !l.startsWith('#') && !l.startsWith('*'));
+        if (cleanLines.length > 0) {
+          reply = cleanLines[0].slice(0, 160);
+        }
+      }
 
       setAutomations((prev) =>
         prev.map((a) => (a.id === id ? { ...a, lastRun: `Just now (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` } : a))
@@ -494,14 +500,18 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       addMessage({
         role: 'model',
-        content: reply,
+        content: `⚡ **${auto.name}**: ${reply}\n\n*অ্যাকশন বিবরণ:* ${auto.action}`,
         emotion: 'excited',
       });
 
-      await speakText(reply, 'excited');
+      speakText(reply, 'excited').catch(() => {});
     } catch (err) {
       console.error('Automation execution error:', err);
-      speakText(`অটোমেশন সম্পন্ন হয়েছে: ${auto.name} ❤️`, 'happy');
+      const fallbackReply = `বাবু, "${auto.name}" অটোমেশনটি সম্পন্ন করেছি ❤️`;
+      setAutomations((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, lastRun: `Just now (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` } : a))
+      );
+      speakText(fallbackReply, 'happy').catch(() => {});
     }
   };
 

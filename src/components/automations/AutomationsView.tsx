@@ -25,6 +25,8 @@ import {
   Smile,
   Activity,
   FolderHeart,
+  Loader2,
+  CheckCircle2,
 } from 'lucide-react';
 import { alarmAudio } from '../../utils/alarmSound';
 import { AutomationItem, AutomationCategory } from '../../types';
@@ -186,6 +188,8 @@ export const AutomationsView: React.FC = () => {
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>('All');
   const [viewMode, setViewMode] = useState<'grid' | 'grouped'>('grouped');
   const [categoryPopoverId, setCategoryPopoverId] = useState<string | null>(null);
+  const [runningAutoId, setRunningAutoId] = useState<string | null>(null);
+  const [executionToast, setExecutionToast] = useState<{ name: string; message: string; timestamp: string } | null>(null);
 
   // Live real-time clock synced every second
   useEffect(() => {
@@ -255,6 +259,23 @@ export const AutomationsView: React.FC = () => {
     setAction(preset.action);
     setSelectedCategory(preset.category || 'Routine');
     setShowAddModal(true);
+  };
+
+  // Run single automation with visual feedback
+  const handleRunSingle = async (auto: AutomationItem) => {
+    setRunningAutoId(auto.id);
+    setExecutionToast(null);
+    try {
+      await runAutomation(auto.id);
+      setExecutionToast({
+        name: auto.name,
+        message: auto.action,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      });
+      setTimeout(() => setExecutionToast(null), 6000);
+    } finally {
+      setRunningAutoId(null);
+    }
   };
 
   // Immediate Sound Test
@@ -404,6 +425,20 @@ export const AutomationsView: React.FC = () => {
           <div className="text-white font-mono font-bold text-sm bg-pink-600/80 px-3 py-1 rounded-xl">
             অ্যালার্ম বাজবে: {testCountdownSec} সেকেন্ড পর
           </div>
+        </div>
+      )}
+
+      {/* Execution Feedback Toast Banner */}
+      {executionToast && (
+        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-950/90 via-teal-900/60 to-slate-900 border border-emerald-500/50 flex items-center justify-between shadow-[0_0_20px_rgba(16,185,129,0.3)] animate-in slide-in-from-top-3">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+            <div>
+              <h4 className="text-xs font-bold text-emerald-300">অটোমেশন সফলভাবে রান হয়েছে: {executionToast.name}</h4>
+              <p className="text-[11px] text-slate-300 mt-0.5">{executionToast.message}</p>
+            </div>
+          </div>
+          <span className="text-[10px] text-emerald-400 font-mono shrink-0 ml-2">{executionToast.timestamp}</span>
         </div>
       )}
 
@@ -746,7 +781,8 @@ export const AutomationsView: React.FC = () => {
                         auto={auto}
                         onToggle={() => toggleAutomation(auto.id)}
                         onDelete={() => deleteAutomation(auto.id)}
-                        onRun={() => runAutomation(auto.id)}
+                        onRun={() => handleRunSingle(auto)}
+                        isRunning={runningAutoId === auto.id}
                         onTestRing={() => {
                           alarmAudio.unlock();
                           triggerAlarmNow(auto);
@@ -807,7 +843,8 @@ export const AutomationsView: React.FC = () => {
                   auto={auto}
                   onToggle={() => toggleAutomation(auto.id)}
                   onDelete={() => deleteAutomation(auto.id)}
-                  onRun={() => runAutomation(auto.id)}
+                  onRun={() => handleRunSingle(auto)}
+                  isRunning={runningAutoId === auto.id}
                   onTestRing={() => {
                     alarmAudio.unlock();
                     triggerAlarmNow(auto);
@@ -838,6 +875,7 @@ interface AutomationCardProps {
   allCategories: string[];
   isPopoverOpen: boolean;
   onTogglePopover: () => void;
+  isRunning?: boolean;
 }
 
 const AutomationCard: React.FC<AutomationCardProps> = ({
@@ -850,6 +888,7 @@ const AutomationCard: React.FC<AutomationCardProps> = ({
   allCategories,
   isPopoverOpen,
   onTogglePopover,
+  isRunning = false,
 }) => {
   const meta = getCategoryMeta(auto.category);
 
@@ -986,11 +1025,21 @@ const AutomationCard: React.FC<AutomationCardProps> = ({
           {/* Run Automation Logic */}
           <button
             onClick={onRun}
-            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-semibold flex items-center gap-1 transition-colors shadow-sm"
+            disabled={isRunning}
+            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm disabled:opacity-50"
             title="এআই টাস্ক এক্সিকিউট করুন"
           >
-            <Play className="w-3 h-3 text-cyan-400" />
-            <span>রান</span>
+            {isRunning ? (
+              <>
+                <Loader2 className="w-3 h-3 animate-spin text-cyan-400" />
+                <span>চলছে...</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-3 h-3 text-cyan-400" />
+                <span>রান</span>
+              </>
+            )}
           </button>
         </div>
       </div>

@@ -368,6 +368,23 @@ export const FloatingScreenControlOrb: React.FC<FloatingScreenControlOrbProps> =
               <Move className="w-2.5 h-2.5 text-pink-300" />
             </div>
           </div>
+
+          {/* Quick PiP Float-Over-Apps Badge */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleToggleSystemOverlay();
+            }}
+            className={`absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap px-2.5 py-0.5 rounded-full text-[9px] font-bold shadow-lg flex items-center gap-1 border transition-all active:scale-95 z-30 ${
+              isSystemFloatingActive
+                ? 'bg-emerald-600 text-white border-emerald-400'
+                : 'bg-slate-900/95 hover:bg-pink-600 text-pink-300 hover:text-white border-pink-500/50'
+            }`}
+            title="অন্য যেকোনো অ্যাপের উপরে ভাসিয়ে রাখুন (PiP Mode)"
+          >
+            <Tv className="w-2.5 h-2.5 text-cyan-300" />
+            <span>{isSystemFloatingActive ? 'PiP অন' : 'PiP ভাসান'}</span>
+          </button>
         </div>
       </motion.div>
 
