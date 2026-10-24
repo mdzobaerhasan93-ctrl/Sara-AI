@@ -41,8 +41,12 @@ export function buildMemoryContext(input: unknown): string {
       continue;
     }
 
-    const content = item.content
-      .replace(/[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]/g, ' ')
+    const content = Array.from(item.content)
+      .filter((character) => {
+        const code = character.charCodeAt(0);
+        return code === 9 || code === 10 || code === 13 || code >= 32;
+      })
+      .join('')
       .trim();
 
     if (!content) {
