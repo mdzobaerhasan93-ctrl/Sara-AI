@@ -26,6 +26,7 @@ function jsonResponse(data: unknown, status = 200): Response {
 }
 
 function makeFetch(run: Record<string, unknown> | null, calls: Array<{ url: string; init?: RequestInit }> = []) {
+  let runListCalls = 0;
   const fetchImpl: typeof fetch = async (input, init) => {
     const url = String(input);
     calls.push({ url, init });
@@ -36,7 +37,10 @@ function makeFetch(run: Record<string, unknown> | null, calls: Array<{ url: stri
       return new Response(null, { status: 204 });
     }
     if (url.includes('/actions/runs?')) {
-      return jsonResponse({ workflow_runs: run ? [run] : [] });
+      runListCalls += 1;
+      // The first read is the pre-dispatch snapshot; only later reads may
+      // contain the newly created run that verifies this approval.
+      return jsonResponse({ workflow_runs: runListCalls === 1 ? [] : (run ? [run] : []) });
     }
     return jsonResponse({ message: 'unexpected request' }, 500);
   };
@@ -124,7 +128,7 @@ if (dispatched.success) {
   assert.equal(dispatched.run.id, 99123);
   assert.match(dispatched.message, /Completion is not yet verified/);
 }
-assert.equal(calls.length, 3, 'Expected workflow lookup, dispatch, then run verification');
+assert.equal(calls.length, 4, 'Expected workflow lookup, baseline snapshot, dispatch, then run verification');
 
 const dispatchCall = calls.find((call) => call.init?.method === 'POST');
 assert.ok(dispatchCall);
