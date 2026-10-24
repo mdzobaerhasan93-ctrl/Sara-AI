@@ -225,7 +225,7 @@ export async function dispatchGitHubWorkflow(
 
     const dispatchStartedAt = Date.now();
     const dispatchResponse = await fetchImpl(
-      `${apiBase}/actions/workflows/${encodeURIComponent(workflow)} /dispatches`.replace('%20/dispatches', '/dispatches'),
+      `${apiBase}/actions/workflows/${encodeURIComponent(workflow)}/dispatches`,
       {
         method: 'POST',
         headers,
