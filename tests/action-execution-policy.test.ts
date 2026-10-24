@@ -18,7 +18,9 @@ for (const action of unimplementedActions) {
     details: {},
   });
 
-  assert.equal(decision.httpStatus, 501, `${action} must remain unavailable without a real integration`);
+  if (decision.httpStatus !== 501) {
+    throw new Error(`${action} must remain unavailable without a real integration`);
+  }
   assert.equal(decision.response.success, false);
   assert.equal(decision.response.status, 'NOT_IMPLEMENTED');
   assert.equal(decision.response.actionId, 'test-action-1');
@@ -40,7 +42,9 @@ const invalidRequests: unknown[] = [
 
 for (const request of invalidRequests) {
   const decision = decideActionExecutionRequest(request);
-  assert.equal(decision.httpStatus, 400, 'Malformed action requests should be rejected');
+  if (decision.httpStatus !== 400) {
+    throw new Error('Malformed action requests should be rejected');
+  }
   assert.equal(decision.response.success, false);
   assert.equal(decision.response.status, 'INVALID_REQUEST');
 }
