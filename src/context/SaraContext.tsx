@@ -1658,28 +1658,44 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // 14. Action Execution & Approval
   const approveAction = async (actionId: string) => {
     const proposal = pendingActions.find((a) => a.id === actionId);
-    if (!proposal) return;
+    if (!proposal || proposal.status !== 'PENDING') return;
 
+    const isGitHubAction = proposal.action === 'github_action';
     setAssistantState('EXECUTING');
     try {
-      const res = await fetch('/api/action-execute', {
+      const endpoint = isGitHubAction ? '/api/github-actions/dispatch' : '/api/action-execute';
+      const requestBody = isGitHubAction
+        ? {
+            actionId: proposal.id,
+            approved: true,
+            repository: proposal.details.repo || proposal.details.repository,
+            workflow: proposal.details.workflow,
+            ref: proposal.details.ref,
+            inputs: proposal.details.inputs,
+          }
+        : {
+            actionId: proposal.id,
+            action: proposal.action,
+            service: proposal.service,
+            details: proposal.details,
+          };
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          actionId: proposal.id,
-          action: proposal.action,
-          service: proposal.service,
-          details: proposal.details,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await res.json();
       if (data.success) {
-        // Update proposal in pending and in messages
+        const isWorkflowStillRunning = isGitHubAction && data.status !== 'completed';
+        const nextStatus: ActionProposal['status'] = isWorkflowStillRunning ? 'APPROVED' : 'EXECUTED';
+        const executedAt = isWorkflowStillRunning ? undefined : (data.executedAt || new Date().toISOString());
+
         setPendingActions((prev) =>
           prev.map((a) =>
             a.id === actionId
-              ? { ...a, status: 'EXECUTED', executedAt: data.executedAt, resultMessage: data.message }
+              ? { ...a, status: nextStatus, executedAt, resultMessage: data.message }
               : a
           )
         );
@@ -1691,8 +1707,8 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   ...m,
                   actionProposal: {
                     ...m.actionProposal,
-                    status: 'EXECUTED',
-                    executedAt: data.executedAt,
+                    status: nextStatus,
+                    executedAt,
                     resultMessage: data.message,
                   },
                 }
@@ -1701,21 +1717,52 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
         );
 
         addActivityLog({
-          title: `Action executed: ${proposal.title}`,
+          title: isGitHubAction
+            ? (data.status === 'completed' ? `GitHub workflow completed: ${proposal.title}` : `GitHub workflow dispatched: ${proposal.title}`)
+            : `Action executed: ${proposal.title}`,
           type: 'action',
           service: proposal.service,
-          status: 'SUCCESS',
+          status: isWorkflowStillRunning ? 'PENDING' : 'SUCCESS',
           details: data.message,
         });
 
-        const confirmText = `Done ❤️ আমি কাজটি সম্পূর্ণ করেছি: ${data.message}`;
+        const confirmText = isGitHubAction
+          ? data.message
+          : `Done ❤️ আমি কাজটি সম্পূর্ণ করেছি: ${data.message}`;
+        const emotion: EmotionState = isWorkflowStillRunning ? 'thinking' : 'happy';
         addMessage({
           role: 'model',
           content: confirmText,
-          emotion: 'happy',
+          emotion,
         });
-        speakText(confirmText, 'happy');
+        speakText(confirmText, emotion);
       } else {
+        if (isGitHubAction && data.status === 'WORKFLOW_FAILED' && data.run) {
+          const failureMessage = data.error || 'GitHub workflow failed.';
+          const failedAt = data.run.createdAt || new Date().toISOString();
+          setPendingActions((prev) =>
+            prev.map((a) =>
+              a.id === actionId
+                ? { ...a, status: 'FAILED', executedAt: failedAt, resultMessage: failureMessage }
+                : a
+            )
+          );
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.actionProposal?.id === actionId
+                ? {
+                    ...m,
+                    actionProposal: {
+                      ...m.actionProposal,
+                      status: 'FAILED',
+                      executedAt: failedAt,
+                      resultMessage: failureMessage,
+                    },
+                  }
+                : m
+            )
+          );
+        }
         throw new Error(data.error || 'Execution failed');
       }
     } catch (e: any) {
