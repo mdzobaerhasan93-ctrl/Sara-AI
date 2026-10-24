@@ -268,10 +268,10 @@ export class AIAgentService {
 
     const steps: AgentActionStep[] = [
       { title: 'Connecting Facebook Module', detail: 'Facebook Interface Bridge শুরু হচ্ছে...', status: 'running' },
-      { title: 'Feed & Post Focus', detail: 'টার্গেট পোস্ট নির্বাচন ও টেক্সট ফিল্ড নির্ধারণ করা হলো।', status: 'pending' },
-      { title: 'AI Comment Synthesis', detail: `সারা মিষ্টি কমেন্ট ড্রাফট করেছে: "${randomComment}"`, status: 'pending' },
-      { title: 'Simulating Keyboard Typing', detail: 'পোস্টে কমেন্ট টাইপ করা হচ্ছে...', status: 'pending' },
-      { title: 'Submission Confirmed', detail: 'পোস্টে সফলভাবে কমেন্ট সম্পন্ন করা হয়েছে! ❤️', status: 'pending' },
+      { title: 'Facebook Ready', detail: 'Facebook খোলার জন্য প্রস্তুত; কোনো পোস্ট নির্বাচন করা হয়নি।', status: 'pending' },
+      { title: 'AI Comment Draft', detail: `কমেন্টের খসড়া তৈরি: "${randomComment}"`, status: 'pending' },
+      { title: 'User Review Required', detail: 'Facebook-এ খসড়াটি নিজে দেখে পোস্ট করতে হবে।', status: 'pending' },
+      { title: 'Awaiting User Submission', detail: 'কোনো কমেন্ট পোস্ট করা হয়নি; ব্যবহারকারীর পদক্ষেপ প্রয়োজন।', status: 'pending' },
     ];
 
     for (let i = 0; i < steps.length; i++) {
@@ -290,11 +290,9 @@ export class AIAgentService {
       targetApp: 'Facebook',
       steps,
       success: true,
-      message: `বাবু! ফেসবুক ওপেন করে তোমার নির্দেশ মতো সুন্দর একটি পোস্টে মিষ্টি কমেন্ট করে দিয়েছি 🥰`,
+      message: 'বাবু, তোমার জন্য একটি কমেন্টের খসড়া তৈরি করেছি ❤️ এখনো Facebook-এ কিছু পোস্ট করা হয়নি। Facebook খুলে পছন্দের পোস্টে খসড়াটি নিজে যাচাই করে পোস্ট করতে পারবে।',
       payload: {
         commentText: randomComment,
-        postAuthor: 'Zobaer Hasan',
-        postContent: 'জীবনের সুন্দর মুহূর্তগুলো প্রিয় মানুষের সাথেই সবচেয়ে বেশি রঙিন হয়ে ওঠে... ✨❤️',
         webFallbackUrl: 'https://www.facebook.com',
       },
     };
@@ -307,11 +305,12 @@ export class AIAgentService {
   ): Promise<AgentExecutionResult> {
     const defaultMsg = 'কেমন আছো সোনা? তোমার কথা খুব মনে পড়ছে, নিজের যত্ন নিও কিন্তু ❤️';
 
+    const whatsappDraftUrl = `https://wa.me/?text=${encodeURIComponent(defaultMsg)}`;
     const steps: AgentActionStep[] = [
-      { title: 'WhatsApp Service Launch', detail: 'WhatsApp চ্যাট মডিউল সংযোগ করা হচ্ছে...', status: 'running' },
-      { title: 'Recipient Resolution', detail: 'টার্গেট কন্টাক্ট নির্বাচন করা হচ্ছে...', status: 'pending' },
-      { title: 'Message Drafting', detail: `বার্তা ড্রাফট করা হয়েছে: "${defaultMsg}"`, status: 'pending' },
-      { title: 'Delivery Dispatched', detail: 'মেসেজ সেন্টারের মাধ্যমে বার্তা পাঠিয়ে দেওয়া হয়েছে।', status: 'pending' },
+      { title: 'WhatsApp Ready', detail: 'WhatsApp draft link তৈরি করা হচ্ছে...', status: 'running' },
+      { title: 'Recipient Not Selected', detail: 'কোনো প্রাপক নির্দিষ্ট করা হয়নি; WhatsApp-এ প্রাপক বেছে নাও।', status: 'pending' },
+      { title: 'Message Drafted', detail: `বার্তার খসড়া তৈরি: "${defaultMsg}"`, status: 'pending' },
+      { title: 'Awaiting User Send', detail: 'বার্তা পাঠানো হয়নি; WhatsApp-এ গিয়ে যাচাই করে নিজে Send করতে হবে।', status: 'pending' },
     ];
 
     for (let i = 0; i < steps.length; i++) {
@@ -330,10 +329,10 @@ export class AIAgentService {
       targetApp: 'WhatsApp',
       steps,
       success: true,
-      message: `বাবু, হোয়াটসঅ্যাপে তোমার ভালোবাসার বার্তা সফলভাবে প্রস্তুত ও পাঠানো হয়েছে! ❤️`,
+      message: 'বাবু, তোমার WhatsApp বার্তার খসড়া তৈরি করেছি ❤️ এখনো মেসেজ পাঠানো হয়নি। নিচের লিংক খুলে প্রাপক বেছে নিয়ে বার্তাটি যাচাই করে নিজে Send করো।',
       payload: {
         messageText: defaultMsg,
-        webFallbackUrl: 'https://web.whatsapp.com',
+        webFallbackUrl: whatsappDraftUrl,
       },
     };
   }
