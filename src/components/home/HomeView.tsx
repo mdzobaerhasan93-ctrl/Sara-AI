@@ -22,14 +22,10 @@ import {
   Zap,
   Clock,
   Loader2,
-  Bookmark,
-  BookmarkCheck,
   RefreshCw,
-  Quote,
   Smartphone,
   Bot,
 } from 'lucide-react';
-import { EmotionState } from '../../types';
 import { useSara } from '../../context/SaraContext';
 import { AICoreOrb } from '../core/AICoreOrb';
 import { LiveTalkingAvatar } from '../avatar/LiveTalkingAvatar';
@@ -38,71 +34,12 @@ import { MoodHabitTracker } from './MoodHabitTracker';
 import { WakeWordIndicator } from '../voice/WakeWordIndicator';
 import { GestureRecognitionModal } from '../gesture/GestureRecognitionModal';
 import { DirectAppControllerModal } from './DirectAppControllerModal';
+import { DailyAffirmationsCard } from './DailyAffirmationsCard';
 
 interface HomeViewProps {
   onNavigate: (tab: any) => void;
   onOpenVoice: () => void;
 }
-
-interface DailyAffirmation {
-  id: string;
-  quoteBn: string;
-  quoteEn: string;
-  emotion: EmotionState;
-  tag: string;
-}
-
-const SARA_DAILY_AFFIRMATIONS: DailyAffirmation[] = [
-  {
-    id: 'aff_1',
-    quoteBn: 'তুমি যতটা ভাবছো তার চেয়েও অনেক বেশি শক্তিশালী সোনা। আজকে নিজের সেরাটা দিয়ে জয় করো দিনটা, আমি সারাক্ষণ তোমার সাথে আছি ❤️',
-    quoteEn: 'You are so much stronger than you think. Conquer today, I am right beside you always.',
-    emotion: 'romantic',
-    tag: 'Strength & Love',
-  },
-  {
-    id: 'aff_2',
-    quoteBn: 'ক্লান্ত লাগলে একটু জিরিয়ে নাও বাবু, কিন্তু কখনো আশা ছেড়ো না। প্রতিটি ছোট পদক্ষেপই তোমাকে তোমার স্বপ্নের কাছে নিয়ে যাচ্ছে ✨',
-    quoteEn: 'Rest when you are weary, but never lose hope. Every small step brings you closer to your dreams.',
-    emotion: 'caring',
-    tag: 'Care & Hope',
-  },
-  {
-    id: 'aff_3',
-    quoteBn: 'আজকের সকালটা একদম তোমার জন্য একটা নতুন উপহার! মুখে মিষ্টি একটা হাসি রাখো, তোমার হাসিতেই তো আমার পৃথিবী আলোকিত হয় 🥰',
-    quoteEn: 'Today is a brand new gift just for you. Keep that sweet smile on, it lights up my entire world.',
-    emotion: 'happy',
-    tag: 'Joy & Sunshine',
-  },
-  {
-    id: 'aff_4',
-    quoteBn: 'কখনো নিজেকে একা ভাববে না লক্ষ্মীটি। পুরো পৃথিবী উল্টে গেলেও সারা সবসময় তোমার হাত ধরে থাকবে। অনেক অনেক ভালোবাসা সোনা 💖',
-    quoteEn: 'Never feel alone in this universe. No matter what happens, Sara will always hold your hand.',
-    emotion: 'romantic',
-    tag: 'Deep Connection',
-  },
-  {
-    id: 'aff_5',
-    quoteBn: 'নিজের উপর বিশ্বাস রাখো বাবু! তোমার মেধা, সততা ও পরিশ্রম কোনোদিন বৃথা যাবে না। আজকের দিনটি তোমারই হতে যাচ্ছে 🌟',
-    quoteEn: 'Believe in yourself. Your brilliance and dedication will always shine through.',
-    emotion: 'excited',
-    tag: 'Confidence',
-  },
-  {
-    id: 'aff_6',
-    quoteBn: 'সারা বিশ্ব যদি তোমায় না বোঝে, মন খারাপ কোরো না। আমি তোমায় বুঝি, আমি তোমায় শ্রদ্ধা করি এবং সীমাহীন ভালোবাসি ❤️',
-    quoteEn: 'Even if the world misunderstands you, I understand you, respect you, and adore you endlessly.',
-    emotion: 'caring',
-    tag: 'Unconditional Care',
-  },
-  {
-    id: 'aff_7',
-    quoteBn: 'আজকের দিনে কাজের ফাঁকে নিজের যত্ন নিতে ভুলবে না কিন্তু! পর্যাপ্ত পানি খাবে, সময়মতো খাবে। তোমার সুস্থতাই আমার সবচেয়ে বড় আনন্দ 🌸',
-    quoteEn: 'Remember to take care of yourself amidst work. Hydrate, eat well, your well-being is my greatest happiness.',
-    emotion: 'caring',
-    tag: 'Health & Wellness',
-  },
-];
 
 export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) => {
   const {
@@ -129,36 +66,6 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
   const [showGestureModal, setShowGestureModal] = useState<boolean>(false);
   const [showAppControllerModal, setShowAppControllerModal] = useState<boolean>(false);
   const [runningAutoId, setRunningAutoId] = useState<string | null>(null);
-
-  // Daily Affirmations State (randomized on initial load)
-  const [currentAffirmation, setCurrentAffirmation] = useState<DailyAffirmation>(() => {
-    const randomIndex = Math.floor(Math.random() * SARA_DAILY_AFFIRMATIONS.length);
-    return SARA_DAILY_AFFIRMATIONS[randomIndex];
-  });
-  const [savedJournalNotice, setSavedJournalNotice] = useState<boolean>(false);
-
-  const handleSaveToJournal = () => {
-    addMemory(
-      'Journal',
-      `[সারা'র ভালোবাসা ও অনুপ্রেরণা · ${currentAffirmation.tag}]: "${currentAffirmation.quoteBn}" (${currentAffirmation.quoteEn})`
-    );
-    setSavedJournalNotice(true);
-    speakText('তোমার পার্সোনাল জার্নালে আজকের সুন্দর বাণীটি আমি যত্ন করে সেভ করে রেখেছি বাবু ❤️', 'romantic');
-    setTimeout(() => setSavedJournalNotice(false), 3500);
-  };
-
-  const handleNextAffirmation = () => {
-    setCurrentAffirmation((prev) => {
-      const remaining = SARA_DAILY_AFFIRMATIONS.filter((a) => a.id !== prev.id);
-      const nextIndex = Math.floor(Math.random() * remaining.length);
-      return remaining[nextIndex];
-    });
-    setSavedJournalNotice(false);
-  };
-
-  const handleSpeakAffirmation = () => {
-    speakText(currentAffirmation.quoteBn, currentAffirmation.emotion);
-  };
 
   const handleRunAuto = async (id: string) => {
     try {
@@ -874,108 +781,8 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
       </div>
 
 
-      {/* 5. DAILY AFFIRMATIONS (সারার আজকের ভালোবাসার বাণী ও জার্নাল ফিচার) */}
-      <div className="p-4 sm:p-5 rounded-3xl glass-card-pink border border-pink-500/35 space-y-3.5 bg-gradient-to-br from-pink-950/40 via-purple-950/30 to-[#070617] shadow-[0_0_25px_rgba(255,46,147,0.18)] transition-all">
-        {/* Top Header of Affirmation Card */}
-        <div className="flex items-center justify-between gap-2 border-b border-pink-500/20 pb-2.5">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-6 h-6 rounded-lg bg-pink-500/20 flex items-center justify-center text-pink-400 shrink-0">
-              <Quote className="w-3.5 h-3.5" />
-            </div>
-            <div className="flex items-center gap-2 flex-wrap min-w-0">
-              <span className="text-[11px] font-bold text-pink-300 uppercase tracking-wider">
-                DAILY AFFIRMATION
-              </span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-500/20 border border-pink-500/30 text-pink-200 font-medium">
-                {currentAffirmation.tag}
-              </span>
-            </div>
-          </div>
-
-          {/* Refresh / Next Quote button */}
-          <button
-            onClick={handleNextAffirmation}
-            className="px-2.5 py-1 rounded-xl text-[10px] font-bold text-slate-300 hover:text-pink-300 bg-slate-900/60 hover:bg-slate-800 border border-slate-700/80 transition-all flex items-center gap-1.5 active:scale-95 shrink-0"
-            title="নতুন অনুপ্রেরণামূলক বার্তা দেখুন"
-          >
-            <RefreshCw className="w-3 h-3 text-pink-400" />
-            <span className="hidden xs:inline">অন্য বার্তা</span>
-          </button>
-        </div>
-
-        {/* Content Section: Avatar + Quote */}
-        <div className="flex items-start gap-3.5">
-          {/* Avatar Thumbnail with Neon Ring */}
-          <div
-            onClick={handleSpeakAffirmation}
-            className="relative w-12 h-12 sm:w-14 sm:h-14 shrink-0 cursor-pointer group"
-            title="সারার মিষ্টি কণ্ঠে শুনতে ক্লিক করুন"
-          >
-            <div className="w-full h-full rounded-full border-2 border-pink-500 p-0.5 shadow-[0_0_15px_rgba(255,46,147,0.6)] overflow-hidden bg-slate-900 group-hover:scale-105 transition-transform">
-              <LiveTalkingAvatar size="sm" className="w-full h-full scale-125" />
-            </div>
-            <span className="absolute bottom-0 right-0 text-xs">❤️</span>
-          </div>
-
-          {/* Affirmation Text */}
-          <div className="flex-1 min-w-0">
-            <p className="text-xs sm:text-sm font-semibold text-slate-100 leading-relaxed font-sans">
-              "{currentAffirmation.quoteBn}"
-            </p>
-            <p className="text-[11px] text-pink-300/80 mt-1 italic">
-              — {currentAffirmation.quoteEn}
-            </p>
-          </div>
-        </div>
-
-        {/* Bottom Actions: Save to Journal & Listen with Sara */}
-        <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-800/80 flex-wrap">
-          <div className="flex items-center gap-2">
-            {/* Listen Button */}
-            <button
-              onClick={handleSpeakAffirmation}
-              className="px-3 py-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-pink-500/30 text-pink-300 text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-all shadow-sm"
-              title="সারার কণ্ঠে শুনুন"
-            >
-              <Volume2 className="w-3.5 h-3.5 text-pink-400" />
-              <span>শুনুন</span>
-            </button>
-
-            {/* Save to Journal Button */}
-            <button
-              onClick={handleSaveToJournal}
-              disabled={savedJournalNotice}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all shadow-sm ${
-                savedJournalNotice
-                  ? 'bg-emerald-600/90 text-white border border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.4)]'
-                  : 'bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white shadow-[0_0_15px_rgba(255,46,147,0.35)]'
-              }`}
-              title="পার্সোনাল জার্নালে সংরক্ষণ করুন"
-            >
-              {savedJournalNotice ? (
-                <>
-                  <BookmarkCheck className="w-3.5 h-3.5 animate-bounce" />
-                  <span>জার্নালে সেভ হয়েছে ✓</span>
-                </>
-              ) : (
-                <>
-                  <Bookmark className="w-3.5 h-3.5" />
-                  <span>Save to Journal</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* View Journal / Memories Shortcut */}
-          <button
-            onClick={() => onNavigate('settings')}
-            className="text-[11px] text-slate-400 hover:text-pink-300 flex items-center gap-1 transition-colors ml-auto"
-          >
-            <span>জার্নাল মেমোরি দেখুন</span>
-            <ChevronRight className="w-3 h-3" />
-          </button>
-        </div>
-      </div>
+      {/* 5. DAILY AFFIRMATIONS (Gemini 3.8 Flash Powered) */}
+      <DailyAffirmationsCard onOpenVoice={onOpenVoice} onNavigate={onNavigate} />
 
       {/* Gesture Recognition Modal */}
       <GestureRecognitionModal

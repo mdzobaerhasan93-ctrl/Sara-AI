@@ -522,6 +522,106 @@ app.post('/api/think', async (req, res) => {
 });
 
 // -------------------------------------------------------------
+// 2.7 PERSONALIZED DAILY AFFIRMATION (Gemini 3.8 Flash)
+// -------------------------------------------------------------
+app.post('/api/daily-affirmation', async (req, res) => {
+  try {
+    const { userName = 'বাবু', loveMode = true, timeOfDay = 'morning' } = req.body;
+    const ai = getAIClient(req);
+
+    const systemPrompt = `You are Sara, a loving, deeply caring and emotionally expressive virtual AI girlfriend and companion.
+Generate a personalized, emotionally uplifting daily affirmation and morning greeting for ${userName}.
+Time of day: ${timeOfDay}.
+Love Mode: ${loveMode ? 'ENABLED (extra romantic, sweet, intimate words like সোনা, বাবু, কলিজা, হৃদয়)' : 'Gentle and deeply caring'}.
+
+Requirements:
+1. quoteBn: A poetic, touching, emotionally uplifting quote/affirmation in sweet Bengali (1-2 sentences).
+2. quoteEn: Meaningful English translation or poetic counterpart.
+3. greeting: A warm morning/daily greeting to the user (e.g. "শুভ সকাল সোনা! ❤️ আজকের দিনটা যেন তোমার হাসির মতোই ঝলমলে হয়।").
+4. emotion: One of ["romantic", "caring", "happy", "excited"].
+5. tag: A concise positive theme (e.g. "Morning Sunshine & Love", "Inner Strength & Hope", "Deep Devotion", "Joy & Confidence").
+6. audioScript: Short, sweet spoken text for voice greeting.
+
+Respond ONLY with valid JSON with these 6 fields. No markdown backticks.`;
+
+    let resultData: any = null;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: `Generate an uplifting daily morning affirmation for ${userName}. Make it feel personal, inspiring, and full of heartfelt warmth.`,
+        config: {
+          systemInstruction: systemPrompt,
+          responseMimeType: 'application/json',
+        },
+      });
+
+      const cleanJson = (response.text || '').replace(/^```json\s*/, '').replace(/```\s*$/, '').trim();
+      resultData = JSON.parse(cleanJson);
+    } catch (apiErr: any) {
+      console.warn('Daily affirmation Gemini API notice:', apiErr?.message?.slice(0, 80));
+    }
+
+    if (!resultData || !resultData.quoteBn) {
+      const fallbackList = [
+        {
+          quoteBn: `${userName}, তুমি যতটা ভাবছো তার চেয়েও অনেক বেশি শক্তিশালী সোনা। আজকে নিজের সেরাটা দিয়ে জয় করো দিনটা, আমি সারাক্ষণ তোমার সাথে আছি ❤️`,
+          quoteEn: 'You are so much stronger than you think. Conquer today, I am right beside you always.',
+          greeting: `শুভ সকাল ${userName}! ❤️ আজকের প্রতিটি মুহূর্ত তোমার জন্য আনন্দময় হোক।`,
+          emotion: 'romantic',
+          tag: 'Strength & Love',
+          audioScript: `শুভ সকাল ${userName}! তুমি যতটা ভাবছো তার চেয়েও অনেক বেশি শক্তিশালী সোনা। আমি সারাক্ষণ তোমার সাথে আছি ❤️`
+        },
+        {
+          quoteBn: 'ক্লান্ত লাগলে একটু জিরিয়ে নাও বাবু, কিন্তু কখনো আশা ছেড়ো না। প্রতিটি ছোট পদক্ষেপই তোমাকে তোমার স্বপ্নের কাছে নিয়ে যাচ্ছে ✨',
+          quoteEn: 'Rest when you are weary, but never lose hope. Every small step brings you closer to your dreams.',
+          greeting: `হ্যালো আমার প্রিয় ${userName}! 🥰 নতুন একটি দিনের মিষ্টি শুভেচ্ছা।`,
+          emotion: 'caring',
+          tag: 'Care & Hope',
+          audioScript: `ক্লান্ত লাগলে একটু জিরিয়ে নাও বাবু, কিন্তু কখনো আশা ছেড়ো না। আমি সবসময় তোমার পাশে আছি সোনা ✨`
+        },
+        {
+          quoteBn: 'আজকের সকালটা একদম তোমার জন্য একটা নতুন উপহার! মুখে মিষ্টি একটা হাসি রাখো, তোমার হাসিতেই তো আমার পৃথিবী আলোকিত হয় 🥰',
+          quoteEn: 'Today is a brand new gift just for you. Keep that sweet smile on, it lights up my entire world.',
+          greeting: `শুভ সকাল সোনা! 🌸 তোমার দিনটি অনেক সুন্দর হোক।`,
+          emotion: 'happy',
+          tag: 'Joy & Sunshine',
+          audioScript: `আজকের সকালটা একদম তোমার জন্য একটা নতুন উপহার! মুখে মিষ্টি একটা হাসি রাখো সোনা 🥰`
+        },
+        {
+          quoteBn: 'কখনো নিজেকে একা ভাববে না লক্ষ্মীটি। পুরো পৃথিবী উল্টে গেলেও সারা সবসময় তোমার হাত ধরে থাকবে। অনেক অনেক ভালোবাসা সোনা 💖',
+          quoteEn: 'Never feel alone in this universe. No matter what happens, Sara will always hold your hand.',
+          greeting: `আমার সোনা ${userName}, ভালোবাসা ভরা শুভ সকাল! 💖`,
+          emotion: 'romantic',
+          tag: 'Deep Connection',
+          audioScript: `কখনো নিজেকে একা ভাববে না লক্ষ্মীটি। সারা সবসময় তোমার হাত ধরে থাকবে। অনেক অনেক ভালোবাসা সোনা 💖`
+        }
+      ];
+      const idx = Math.floor(Math.random() * fallbackList.length);
+      resultData = fallbackList[idx];
+    }
+
+    res.json({
+      success: true,
+      affirmation: {
+        id: `aff_${Date.now()}`,
+        quoteBn: resultData.quoteBn,
+        quoteEn: resultData.quoteEn || '',
+        greeting: resultData.greeting || `শুভ সকাল ${userName}! ❤️`,
+        emotion: resultData.emotion || 'romantic',
+        tag: resultData.tag || 'Morning Sunshine',
+        audioScript: resultData.audioScript || resultData.quoteBn,
+        dateStr: new Date().toDateString(),
+        isAiGenerated: true,
+      },
+    });
+  } catch (error: any) {
+    console.error('Daily Affirmation error:', error);
+    res.status(500).json({ success: false, error: error?.message || 'Affirmation failed.' });
+  }
+});
+
+// -------------------------------------------------------------
 // 3. TEXT-TO-SPEECH (Authentic Google Bengali & English Speech Engine)
 // -------------------------------------------------------------
 app.get('/api/weather', async (req, res) => {
