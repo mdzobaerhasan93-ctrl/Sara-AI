@@ -1790,6 +1790,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const rejectAction = (actionId: string) => {
+    if (executingActionIdsRef.current.has(actionId)) return;
     setPendingActions((prev) =>
       prev.map((a) => (a.id === actionId ? { ...a, status: 'REJECTED' } : a))
     );
