@@ -15,12 +15,17 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: 22
       - name: Install dependencies
-        run: npm install
+        run: bun install --frozen-lockfile
       - name: Build application
-        run: npm run build
+        run: bun run build
+      - name: Type-check application
+        run: bun run lint
