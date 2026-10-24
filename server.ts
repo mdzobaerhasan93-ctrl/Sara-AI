@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { WebSocketServer, WebSocket } from 'ws';
 import { decideActionExecutionRequest } from './src/services/ActionExecutionPolicy.ts';
+import { dispatchGitHubWorkflow } from './src/services/GitHubActionsService.ts';
 
 dotenv.config();
 
@@ -110,6 +111,7 @@ DO NOT execute it immediately! Instead, include a structured action proposal blo
 }
 \`\`\`
 Ask the user warmly for their approval before execution. Never claim an external action succeeded unless confirmed.
+For a github_action proposal, require the exact repository in owner/repo format, the workflow filename (for example release.yml), a branch or tag ref, and optional string inputs. Put these in details.repo, details.workflow, details.ref, and details.inputs. Never invent a repository or workflow, and do not claim dispatch succeeded before the user approves it.
 `.trim();
 
     // Map conversation history
@@ -843,6 +845,15 @@ app.post('/api/maps-grounding', async (req, res) => {
 // -------------------------------------------------------------
 // 6. ACTION EXECUTION PIPELINE (Verification after User Approval)
 // -------------------------------------------------------------
+app.post('/api/github-actions/dispatch', async (req, res) => {
+  const result = await dispatchGitHubWorkflow(req.body, {
+    token: process.env.GITHUB_ACTIONS_TOKEN,
+    allowedRepositories: process.env.GITHUB_ALLOWED_REPOSITORIES,
+    allowedWorkflows: process.env.GITHUB_ALLOWED_WORKFLOWS,
+  });
+  return res.status(result.httpStatus).json(result);
+});
+
 app.post('/api/action-execute', (req, res) => {
   const decision = decideActionExecutionRequest(req.body);
   return res.status(decision.httpStatus).json(decision.response);
