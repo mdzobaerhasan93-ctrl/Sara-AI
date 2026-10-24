@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { WebSocketServer, WebSocket } from 'ws';
+import { decideActionExecutionRequest } from './src/services/ActionExecutionPolicy.ts';
 
 dotenv.config();
 
@@ -842,49 +843,9 @@ app.post('/api/maps-grounding', async (req, res) => {
 // -------------------------------------------------------------
 // 6. ACTION EXECUTION PIPELINE (Verification after User Approval)
 // -------------------------------------------------------------
-app.post('/api/action-execute', async (req, res) => {
-  try {
-    const { actionId, action, service, details } = req.body;
-
-    // Simulate real execution with verification log
-    const timestamp = new Date().toISOString();
-    let resultMessage = '';
-
-    if (action === 'send_email') {
-      resultMessage = `Email successfully queued and delivered to ${details?.to || 'recipient'}. Subject: "${details?.subject || 'No Subject'}". Verification Token: MAIL-${Date.now().toString(36).toUpperCase()}`;
-    } else if (action === 'create_calendar_event') {
-      resultMessage = `Calendar event "${details?.title || 'Reminder'}" created for ${details?.time || 'today'}. Synced with ${service || 'Google Calendar'}.`;
-    } else if (action === 'github_action') {
-      resultMessage = `GitHub workflow triggered on repository ${details?.repo || 'main'}. Dispatch ID: #RUN-${Math.floor(Math.random() * 90000 + 10000)}.`;
-    } else if (action === 'deploy_project') {
-      resultMessage = `Deployment pipeline initiated. Build artifacts validated. Live URL provisioned.`;
-    } else if (action === 'launch_app') {
-      const appName = details?.appName?.toLowerCase();
-      const allowlist = ['notepad', 'calculator', 'chrome', 'vscode', 'explorer', 'facebook', 'youtube', 'instagram'];
-      if (allowlist.includes(appName)) {
-        resultMessage = `Launching ${appName}... SARA has initiated the system launch command for ${appName}.`;
-      } else {
-        throw new Error(`Application "${appName}" not found or unauthorized to launch.`);
-      }
-    } else {
-      resultMessage = `Action "${action}" successfully executed on service ${service}.`;
-    }
-
-    res.json({
-      success: true,
-      actionId,
-      status: 'SUCCESS',
-      executedAt: timestamp,
-      message: resultMessage,
-    });
-  } catch (error: any) {
-    console.error('Action execution error:', error);
-    res.status(500).json({
-      success: false,
-      status: 'FAILED',
-      error: error?.message || 'Action execution failed.',
-    });
-  }
+app.post('/api/action-execute', (req, res) => {
+  const decision = decideActionExecutionRequest(req.body);
+  return res.status(decision.httpStatus).json(decision.response);
 });
 
 // -------------------------------------------------------------
