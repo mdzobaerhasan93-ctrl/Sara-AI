@@ -29,3 +29,5 @@ jobs:
         run: bun run build
       - name: Type-check application
         run: bun run lint
+      - name: Test agent command detection
+        run: bun run test
