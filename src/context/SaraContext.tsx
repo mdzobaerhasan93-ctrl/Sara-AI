@@ -275,6 +275,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // 7. Action Proposals
   const [pendingActions, setPendingActions] = useState<ActionProposal[]>([]);
+  const executingActionIdsRef = useRef<Set<string>>(new Set());
 
   // 8. Memories
   const [memories, setMemories] = useState<MemoryItem[]>(() => {
@@ -1658,7 +1659,8 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // 14. Action Execution & Approval
   const approveAction = async (actionId: string) => {
     const proposal = pendingActions.find((a) => a.id === actionId);
-    if (!proposal || proposal.status !== 'PENDING') return;
+    if (!proposal || proposal.status !== 'PENDING' || executingActionIdsRef.current.has(actionId)) return;
+    executingActionIdsRef.current.add(actionId);
 
     const isGitHubAction = proposal.action === 'github_action';
     setAssistantState('EXECUTING');
@@ -1782,6 +1784,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       speakText(failText, 'sad');
     } finally {
+      executingActionIdsRef.current.delete(actionId);
       setAssistantState('IDLE');
     }
   };
