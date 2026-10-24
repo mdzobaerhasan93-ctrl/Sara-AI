@@ -114,7 +114,7 @@ function normalizeInputs(value: unknown): Record<string, string> | null {
 
   const result: Record<string, string> = {};
   for (const [key, raw] of entries) {
-    if (!/^[A-Za-z_][A-Za-z0-9_-]{0,63}$/.test(key)) return null;
+    if (!/^[A-Za-z_][A-Za-z0-9_-]{0,63}$/.test(key) || ['__proto__', 'constructor', 'prototype'].includes(key)) return null;
     if (typeof raw !== 'string' && typeof raw !== 'number' && typeof raw !== 'boolean') return null;
     const valueString = String(raw);
     if (valueString.length > 1000) return null;
@@ -155,18 +155,19 @@ function summarizeRun(run: Record<string, unknown>): GitHubWorkflowRunSummary {
  * Actions API exposes the newly-created run for the allowlisted workflow/ref.
  */
 export async function dispatchGitHubWorkflow(
-  request: GitHubWorkflowDispatchInput,
+  request: unknown,
   config: GitHubActionsConfig = {},
 ): Promise<GitHubWorkflowDispatchResult> {
-  const actionId = typeof request?.actionId === 'string' ? request.actionId.trim() : '';
-  if (request?.approved !== true || !actionId || actionId.length > 200) {
+  const body = isRecord(request) ? request : {};
+  const actionId = typeof body.actionId === 'string' ? body.actionId.trim() : '';
+  if (body.approved !== true || !actionId || actionId.length > 200) {
     return failure(400, 'APPROVAL_REQUIRED', 'A valid action ID and explicit user approval are required. No workflow was dispatched.', actionId || undefined);
   }
 
-  const repository = normalizeRepository(request.repository);
-  const workflow = normalizeWorkflow(request.workflow);
-  const ref = normalizeRef(request.ref);
-  const inputs = normalizeInputs(request.inputs);
+  const repository = normalizeRepository(body.repository);
+  const workflow = normalizeWorkflow(body.workflow);
+  const ref = normalizeRef(body.ref);
+  const inputs = normalizeInputs(body.inputs);
 
   if (!repository || !workflow || !ref || !inputs) {
     return failure(400, 'INVALID_REQUEST', 'Repository, workflow filename, ref, or workflow inputs are invalid. No workflow was dispatched.', actionId);
@@ -223,6 +224,27 @@ export async function dispatchGitHubWorkflow(
     }
     const workflowId = workflowData.id as number;
 
+    // Snapshot the current run IDs so pre-existing or already-visible runs
+    // cannot be mistaken for the dispatch initiated by this approval.
+    const baselineResponse = await fetchImpl(
+      `${apiBase}/actions/runs?event=workflow_dispatch&branch=${encodeURIComponent(ref)}&per_page=20`,
+      { method: 'GET', headers },
+    );
+    if (baselineResponse.status === 401) {
+      return failure(401, 'GITHUB_AUTH_FAILED', 'GitHub rejected the configured server credential while checking existing runs.', actionId);
+    }
+    if (baselineResponse.status === 403) {
+      return failure(403, 'GITHUB_PERMISSION_DENIED', 'The configured GitHub credential needs Actions read permission to verify workflow runs. No dispatch was attempted.', actionId);
+    }
+    if (!baselineResponse.ok) {
+      return failure(502, 'RUN_BASELINE_FAILED', 'Could not check existing workflow runs. No workflow was dispatched.', actionId);
+    }
+    const baselineData: unknown = await baselineResponse.json();
+    const baselineRuns = isRecord(baselineData) && Array.isArray(baselineData.workflow_runs) ? baselineData.workflow_runs : [];
+    const baselineIds = new Set<number>(
+      baselineRuns.filter(isGitHubRun).map((run) => run.id as number),
+    );
+
     const dispatchStartedAt = Date.now();
     const dispatchResponse = await fetchImpl(
       `${apiBase}/actions/workflows/${encodeURIComponent(workflow)}/dispatches`,
@@ -272,7 +294,7 @@ export async function dispatchGitHubWorkflow(
         .filter((run) => run.workflow_id === workflowId && run.head_branch === ref && run.event === 'workflow_dispatch')
         .filter((run) => {
           const createdAt = Date.parse(run.created_at as string);
-          return Number.isFinite(createdAt) && createdAt >= dispatchStartedAt - 5000;
+          return Number.isFinite(createdAt) && createdAt >= dispatchStartedAt - 5000 && !baselineIds.has(run.id as number);
         })
         .sort((a, b) => Date.parse(b.created_at as string) - Date.parse(a.created_at as string))[0];
 
