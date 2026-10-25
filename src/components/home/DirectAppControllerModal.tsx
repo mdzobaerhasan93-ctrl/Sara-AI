@@ -397,7 +397,9 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
 
                 <button
                   onClick={() => {
-                    AppInventoryService.launchAppSafely(selectedApp);
+                    AppInventoryService.launchAppSafely(selectedApp, (notice) => {
+                      speakText(notice, 'caring');
+                    });
                   }}
                   className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1 active:scale-95 transition-transform"
                 >
