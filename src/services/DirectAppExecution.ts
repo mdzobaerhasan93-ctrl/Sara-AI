@@ -48,6 +48,57 @@ function isAndroidActionBridge(value: unknown): value is AndroidActionBridge {
  * action completed. Success requires an explicit { success: true, completed: true }
  * acknowledgement from the native bridge.
  */
+/**
+ * Extracts message/comment/caption text only when the user explicitly supplied
+ * it. The screen-control parser does not synthesize a default payload.
+ */
+export function extractExplicitActionPayload(command: unknown): string | null {
+  if (typeof command !== 'string' || command.length > 8_000) return null;
+
+  const quotedPatterns = [
+    /"([^"\r\n]{1,500})"/,
+    /“([^”\r\n]{1,500})”/,
+    /'([^'\r\n]{1,500})'/,
+    /‘([^’\r\n]{1,500})’/,
+    /「([^」\r\n]{1,500})」/,
+  ];
+
+  for (const pattern of quotedPatterns) {
+    const match = command.match(pattern);
+    if (match?.[1]) {
+      const content = sanitizeExplicitPayload(match[1]);
+      if (content) return content;
+    }
+  }
+
+  const labeledPatterns = [
+    /(?:message|text|comment|caption|status|বার্তা|মেসেজ|কমেন্ট|ক্যাপশন|স্ট্যাটাস)\s*[:：]\s*(.{1,500})$/i,
+    /(?:লিখে\s*দাও|লিখুন|বলবে)\s+(.{1,500})$/i,
+  ];
+
+  for (const pattern of labeledPatterns) {
+    const match = command.match(pattern);
+    if (match?.[1]) {
+      const content = sanitizeExplicitPayload(match[1]);
+      if (content) return content;
+    }
+  }
+
+  return null;
+}
+
+function sanitizeExplicitPayload(value: string): string | null {
+  const text = Array.from(value)
+    .filter((character) => {
+      const code = character.charCodeAt(0);
+      return code === 9 || code === 10 || code === 13 || code >= 32;
+    })
+    .join('')
+    .trim()
+    .slice(0, 500);
+  return text || null;
+}
+
 export async function dispatchDirectAppAction(
   bridgeInput: unknown,
   request: DirectAppActionRequest,
