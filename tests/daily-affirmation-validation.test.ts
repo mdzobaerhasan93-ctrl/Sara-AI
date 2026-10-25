@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+  buildFallbackDailyAffirmation,
   normalizeDailyAffirmationResult,
   validateDailyAffirmationRequest,
 } from '../src/services/DailyAffirmationValidation.ts';
@@ -78,5 +79,21 @@ assert.equal(invalidOptionalFields?.greeting, '');
 assert.equal(invalidOptionalFields?.emotion, 'caring');
 assert.equal(invalidOptionalFields?.tag, 'Daily Affirmation');
 assert.equal(invalidOptionalFields?.audioScript, 'সুন্দর একটি দিন হোক।');
+
+const eveningFallback = buildFallbackDailyAffirmation('Zobaer', true, 'evening');
+assert.match(eveningFallback.greeting, /শুভ সন্ধ্যা/);
+assert.equal(eveningFallback.emotion, 'romantic');
+assert.match(eveningFallback.tag, /Love/);
+assert.match(eveningFallback.audioScript, /শুভ সন্ধ্যা/);
+
+const nightGentleFallback = buildFallbackDailyAffirmation('  Zobaer\nHasan  ', false, 'night');
+assert.match(nightGentleFallback.greeting, /শুভ রাত্রি Zobaer Hasan/);
+assert.equal(nightGentleFallback.emotion, 'caring');
+assert.equal(nightGentleFallback.tag, 'Care & Hope');
+assert.doesNotMatch(nightGentleFallback.quoteBn, /সোনা/);
+assert.match(nightGentleFallback.audioScript, /শুভ রাত্রি/);
+
+const dailyFallback = buildFallbackDailyAffirmation('User', false, 'daily');
+assert.match(dailyFallback.greeting, /দিনের জন্য/);
 
 console.log('Daily affirmation request and model output validation checks passed.');
