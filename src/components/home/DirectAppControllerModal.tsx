@@ -27,6 +27,7 @@ import {
 import { useSara } from '../../context/SaraContext';
 import { AppInventoryService, AppDefinition, InAppAction } from '../../services/AppInventoryService';
 import { AIAgentService } from '../../services/AIAgentService';
+import { dispatchDirectAppAction } from '../../services/DirectAppExecution';
 
 interface DirectAppControllerModalProps {
   isOpen: boolean;
@@ -52,57 +53,95 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
   const [executionSteps, setExecutionSteps] = useState<string[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(-1);
   const [executionSuccess, setExecutionSuccess] = useState<boolean>(false);
+  const [executionPending, setExecutionPending] = useState<boolean>(false);
+  const [executionFailed, setExecutionFailed] = useState<boolean>(false);
+  const [executionMessage, setExecutionMessage] = useState<string>('');
 
   // New Custom App Registration Modal
   const [showAddAppModal, setShowAddAppModal] = useState<boolean>(false);
   const [newAppName, setNewAppName] = useState<string>('');
   const [newAppPkg, setNewAppPkg] = useState<string>('');
   const [newAppCategory, setNewAppCategory] = useState<AppDefinition['category']>('social');
+  const hasNativeAccessibilityBridge = typeof window !== 'undefined' && typeof (window as any).AndroidBridge?.performAccessibilityAction === 'function';
 
   if (!isOpen) return null;
 
-  // Execute in-app action step-by-step
+  // Dispatch only through a native bridge; never simulate device actions as completed.
   const handleExecuteAction = async (app: AppDefinition, action: InAppAction, payload?: string) => {
     const finalPayload = payload || customPayload || action.defaultPayload || '';
     setIsExecuting(true);
     setExecutionSuccess(false);
-    setCurrentStepIndex(0);
+    setExecutionPending(false);
+    setExecutionFailed(false);
+    setExecutionMessage('');
+    setCurrentStepIndex(-1);
+    setExecutionSteps(['Checking native Android bridge availability…']);
 
-    const formattedSteps = action.steps.map((st) =>
-      st.replace('{payload}', finalPayload)
-    );
-    setExecutionSteps(formattedSteps);
+    const bridge = typeof window !== 'undefined' ? (window as any).AndroidBridge : undefined;
+    const result = await dispatchDirectAppAction(bridge, {
+      packageName: app.packageName,
+      actionId: action.id,
+      payload: finalPayload,
+    });
 
-    // Announce start in sweet voice
-    speakText(`${app.bengaliName} অ্যাপে ঢুকে ${action.bengaliName} শুরু করছি সোনা! ❤️`, 'excited');
-
-    // Step-by-step simulation with realistic accessibility delay
-    for (let i = 0; i < formattedSteps.length; i++) {
-      setCurrentStepIndex(i);
-      await new Promise((resolve) => setTimeout(resolve, 850));
-    }
-
-    setExecutionSuccess(true);
     setIsExecuting(false);
+    setCurrentStepIndex(-1);
+    setExecutionMessage(result.message);
 
-    // Native Bridge call if running in native Android container
-    if (typeof window !== 'undefined' && (window as any).AndroidBridge?.performAccessibilityAction) {
-      try {
-        (window as any).AndroidBridge.performAccessibilityAction(app.packageName, action.id, finalPayload);
-      } catch (err) {}
+    if (result.status === 'SUCCESS') {
+      setExecutionSuccess(true);
+      setExecutionPending(false);
+      setExecutionFailed(false);
+      setExecutionSteps([
+        'Native bridge dispatched the requested action.',
+        'Native bridge explicitly confirmed completion.',
+      ]);
+      const confirmation = `বাবু, ${app.bengaliName}-এ "${action.bengaliName}" কাজটি native bridge থেকে সম্পন্ন হওয়ার confirmation পেয়েছি। ❤️`;
+      speakText(confirmation, 'happy');
+      addActivityLog({
+        title: `In-App Control Completed: ${app.name} -> ${action.name}`,
+        type: 'action',
+        service: 'Android Accessibility Bridge',
+        status: 'SUCCESS',
+        details: `Native bridge confirmed completion for action ID ${action.id}. Message contents were not stored in this log.`,
+      });
+      return;
     }
 
+    if (result.status === 'PENDING') {
+      setExecutionSuccess(false);
+      setExecutionPending(true);
+      setExecutionFailed(false);
+      setExecutionSteps([
+        'Command was handed to the native bridge.',
+        'Waiting for explicit completion confirmation.',
+      ]);
+      speakText('সোনা, native bridge কমান্ডটি গ্রহণ করেছে, কিন্তু কাজ সম্পন্ন হওয়ার confirmation পাওয়া যায়নি। target app দেখে নিশ্চিত হও।', 'caring');
+      addActivityLog({
+        title: `In-App Control Pending: ${app.name} -> ${action.name}`,
+        type: 'action',
+        service: 'Android Accessibility Bridge',
+        status: 'PENDING',
+        details: `Native bridge did not explicitly verify completion for action ID ${action.id}. No success claim was made.`,
+      });
+      return;
+    }
 
-    // Loving confirmation from Sara
-    const confirmMessage = `বাবু, ${app.bengaliName}-এ গিয়ে ${action.bengaliName} সফলভাবে সম্পন্ন করেছি! 🥰`;
-    speakText(confirmMessage, 'romantic');
-
+    setExecutionSuccess(false);
+    setExecutionPending(false);
+    setExecutionFailed(true);
+    setExecutionSteps([
+      'Native Android bridge is unavailable or rejected the request.',
+      'No successful app action was confirmed.',
+    ]);
+    const failure = `বাবু, ${app.bengaliName}-এ কাজটি চালানো যায়নি। ${result.message}`;
+    speakText(failure, 'caring');
     addActivityLog({
-      title: `In-App Control: ${app.name} -> ${action.name}`,
+      title: `In-App Control Not Executed: ${app.name} -> ${action.name}`,
       type: 'action',
       service: 'Android Accessibility Bridge',
-      status: 'SUCCESS',
-      details: `Action: ${action.name}. Payload: ${finalPayload}`,
+      status: 'FAILED',
+      details: `No successful app action was confirmed for action ID ${action.id}. ${result.message}`,
     });
   };
 
@@ -124,9 +163,12 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
       });
 
       setExecutionSteps(agentRes.steps.map((s) => `${s.title}: ${s.detail}`));
-      setExecutionSuccess(true);
+      setExecutionSuccess(agentRes.success);
+      setExecutionPending(false);
+      setExecutionFailed(!agentRes.success);
+      setExecutionMessage(agentRes.message);
       setIsExecuting(false);
-      speakText(agentRes.message, 'romantic');
+      speakText(agentRes.message, agentRes.success ? 'happy' : 'caring');
       return;
     }
 
@@ -142,9 +184,12 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
         setExecutionSteps((prev) => [...prev, `${step.title}: ${step.detail}`]);
       });
       setExecutionSteps(agentRes.steps.map((s) => `${s.title}: ${s.detail}`));
-      setExecutionSuccess(true);
+      setExecutionSuccess(agentRes.success);
+      setExecutionPending(false);
+      setExecutionFailed(!agentRes.success);
+      setExecutionMessage(agentRes.message);
       setIsExecuting(false);
-      speakText(agentRes.message, 'romantic');
+      speakText(agentRes.message, agentRes.success ? 'happy' : 'caring');
     }
   };
 
