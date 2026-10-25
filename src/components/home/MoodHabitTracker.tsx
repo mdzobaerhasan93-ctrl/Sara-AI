@@ -248,17 +248,25 @@ export const MoodHabitTracker: React.FC = () => {
             <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
               <span>Daily Mood & Habit Check-in</span>
               <span className="px-2 py-0.2 rounded-full text-[10px] bg-pink-950/80 text-pink-300 border border-pink-500/30 font-mono">
-                7-Day Streak 🔥
+                {moodStreak > 0 ? `${moodStreak}-Day Streak 🔥` : 'No Streak Yet'}
               </span>
             </h3>
             <p className="text-xs text-slate-400">Track your emotional state and companion habits</p>
           </div>
         </div>
 
-        {showSavedFeedback && (
-          <span className="text-xs font-bold text-emerald-400 flex items-center gap-1 animate-pulse">
-            <Check className="w-3.5 h-3.5" />
-            <span>Saved!</span>
+        {saveStatus && (
+          <span className={`text-xs font-bold flex items-center gap-1 animate-pulse ${saveStatus === 'saved' ? 'text-emerald-400' : 'text-amber-300'}`}>
+            {saveStatus === 'saved' ? (
+              <>
+                <Check className="w-3.5 h-3.5" />
+                <span>Saved!</span>
+              </>
+            ) : (
+              <span>
+                {saveStatus === 'choose-mood' ? 'Choose a mood to save' : 'Session only; storage unavailable'}
+              </span>
+            )}
           </span>
         )}
       </div>
@@ -350,52 +358,58 @@ export const MoodHabitTracker: React.FC = () => {
           </span>
         </div>
 
-        <div className="h-36 w-full pt-2">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
-              <defs>
-                <linearGradient id="moodGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#ff2e93" stopOpacity={0.6} />
-                  <stop offset="95%" stopColor="#b026ff" stopOpacity={0.0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-              <XAxis
-                dataKey="day"
-                stroke="#64748b"
-                fontSize={10}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                domain={[1, 5]}
-                ticks={[1, 2, 3, 4, 5]}
-                stroke="#64748b"
-                fontSize={9}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(val) => {
-                  if (val === 5) return 'Radiant';
-                  if (val === 4) return 'Happy';
-                  if (val === 3) return 'Calm';
-                  if (val === 2) return 'Low';
-                  return 'Sad';
-                }}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Area
-                type="monotone"
-                dataKey="score"
-                stroke="#ff2e93"
-                strokeWidth={2.5}
-                fillOpacity={1}
-                fill="url(#moodGradient)"
-                dot={{ stroke: '#00f2fe', strokeWidth: 2, r: 3.5, fill: '#05050f' }}
-                activeDot={{ r: 6, stroke: '#ff2e93', strokeWidth: 2, fill: '#ffffff' }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+{chartData.length === 0 ? (
+          <div className="flex h-24 items-center justify-center rounded-xl border border-dashed border-slate-700 px-4 text-center text-xs text-slate-400">
+            No mood history yet. Choose a mood to start tracking your real check-ins.
+          </div>
+        ) : (
+          <div className="h-36 w-full pt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="moodGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ff2e93" stopOpacity={0.6} />
+                    <stop offset="95%" stopColor="#b026ff" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                <XAxis
+                  dataKey="day"
+                  stroke="#64748b"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  domain={[1, 5]}
+                  ticks={[1, 2, 3, 4, 5]}
+                  stroke="#64748b"
+                  fontSize={9}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(val) => {
+                    if (val === 5) return 'Radiant';
+                    if (val === 4) return 'Happy';
+                    if (val === 3) return 'Calm';
+                    if (val === 2) return 'Low';
+                    return 'Sad';
+                  }}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Area
+                  type="monotone"
+                  dataKey="score"
+                  stroke="#ff2e93"
+                  strokeWidth={2.5}
+                  fillOpacity={1}
+                  fill="url(#moodGradient)"
+                  dot={{ stroke: '#00f2fe', strokeWidth: 2, r: 3.5, fill: '#05050f' }}
+                  activeDot={{ r: 6, stroke: '#ff2e93', strokeWidth: 2, fill: '#ffffff' }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
 
       {/* 5. Reflection Note Box */}
