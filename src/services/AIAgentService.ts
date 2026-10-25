@@ -1,6 +1,5 @@
-// SARA AI Autonomous Agent Service
-// Handles deep in-app automations (YouTube Movie Search, Facebook Auto-Comment, WhatsApp Messaging, Device App Controls)
-// with Gemini API integration and Zero-Black-Screen safety guarantees.
+// SARA AI Agent Service. External actions remain drafts unless a real, verified integration exists.
+import { normalizeAgentBuilderData } from './AgentBuilderValidation';
 
 export interface AgentActionStep {
   title: string;
@@ -297,11 +296,11 @@ export class AIAgentService {
     onStepUpdate?: (step: AgentActionStep) => void
   ): Promise<AgentExecutionResult> {
     const steps: AgentActionStep[] = [
-      { title: '1. Task Decomposition', detail: `কমান্ড বিশ্লেষণ ও আর্কিটেকচার স্কোপিং: "${command.slice(0, 45)}"`, status: 'running' },
-      { title: '2. Multi-Model Intelligence', detail: 'Gemini 3.8 Flash ও সংশ্লিষ্ট এআই মডেল সমন্বয়...', status: 'pending' },
-      { title: '3. Full-Stack Code Generation', detail: 'কম্পোনেন্ট, স্টাইলিং ও ইন্টারঅ্যাক্টিভ স্টেট কোড উৎপাদন...', status: 'pending' },
-      { title: '4. Sandbox Compilation', detail: 'লাইভ ব্রাউজার স্যান্ডবক্স আইফ্রেম এবং রানার প্রস্তুতকরণ...', status: 'pending' },
-      { title: '5. Ready for Execution', detail: 'সম্পূর্ণ রেসপন্সিভ অ্যাপ্লিকেশন প্রস্তুত ও ভেরিফাইড!', status: 'pending' },
+      { title: '1. Task Scope', detail: `কমান্ড বিশ্লেষণ: "${command.slice(0, 45)}"`, status: 'running' },
+      { title: '2. Preview Generation', detail: 'Configured Gemini API থেকে একটি browser preview চাওয়া হচ্ছে; multi-model orchestration নয়।', status: 'pending' },
+      { title: '3. Preview Payload Check', detail: 'HTML payload আছে কি না এবং size limit-এর মধ্যে কি না যাচাই করা হচ্ছে।', status: 'pending' },
+      { title: '4. Restricted Sandbox Setup', detail: 'Preview restricted iframe-এ দেখানো হবে; build/test/deploy করা হচ্ছে না।', status: 'pending' },
+      { title: '5. Ready to Inspect', detail: 'Browser preview পাওয়া গেলে user নিজে inspect করতে পারবেন; production verification করা হয়নি।', status: 'pending' },
     ];
 
     // Initial phase updates
@@ -331,58 +330,81 @@ export class AIAgentService {
       });
 
       const resJson = await res.json();
-      if (resJson.success && resJson.data) {
-        payloadData = resJson.data;
+      if (resJson?.success && resJson.data) {
+        payloadData = normalizeAgentBuilderData(resJson.data, resJson.provider);
       }
     } catch (e) {
       console.warn('API call error in handleAutonomousBuilder:', e);
     }
 
-    steps[1].status = 'done';
+    const markStep = (index: number, status: AgentActionStep['status'], detail: string) => {
+      steps[index].status = status;
+      steps[index].detail = detail;
+      steps[index].timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      if (onStepUpdate) onStepUpdate(steps[index]);
+    };
 
-    // Step 3
-    steps[2].status = 'running';
-    steps[2].timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    if (onStepUpdate) onStepUpdate(steps[2]);
-    await new Promise((r) => setTimeout(r, 350));
-    steps[2].status = 'done';
+    if (!payloadData) {
+      markStep(1, 'failed', 'কোনো usable preview payload পাওয়া যায়নি।');
+      for (let index = 2; index < steps.length; index += 1) {
+        markStep(index, 'failed', 'আগের ধাপটি ব্যর্থ হওয়ায় এই ধাপ চালানো হয়নি।');
+      }
+      return {
+        id: `agent_auto_${Date.now()}`,
+        type: 'autonomous_builder',
+        title: 'Preview unavailable',
+        bengaliTitle: 'প্রিভিউ পাওয়া যায়নি',
+        targetApp: 'Browser Preview Sandbox',
+        steps,
+        success: false,
+        message: 'বাবু, এইবার usable preview তৈরি করা যায়নি। কোনো app build, test বা deploy করা হয়েছে বলে ধরে নিও না। আবার চেষ্টা করতে পারো।',
+        payload: {
+          taskTitle: 'Preview unavailable',
+          summary: 'No valid preview HTML was returned from the configured generation endpoint.',
+          techStack: [],
+          modelsInvolved: [],
+          files: [],
+          livePreviewHtml: '',
+        },
+      };
+    }
 
-    // Step 4
-    steps[3].status = 'running';
-    steps[3].timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    if (onStepUpdate) onStepUpdate(steps[3]);
-    await new Promise((r) => setTimeout(r, 300));
-    steps[3].status = 'done';
+    markStep(1, 'done', payloadData.provider === 'fallback'
+      ? 'Gemini response পাওয়া যায়নি; built-in fallback template ব্যবহার হয়েছে।'
+      : 'Gemini API একটি browser preview payload দিয়েছে।');
 
-    // Step 5
-    steps[4].status = 'done';
-    steps[4].timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    if (onStepUpdate) onStepUpdate(steps[4]);
+    markStep(2, 'running', 'Preview HTML payload-এর উপস্থিতি ও size limit যাচাই করা হচ্ছে।');
+    await new Promise((r) => setTimeout(r, 100));
+    markStep(2, 'done', 'Preview HTML পাওয়া গেছে; code compile বা tests চালানো হয়নি।');
 
-    const title = payloadData?.taskTitle || `Autonomous App: ${command.slice(0, 30)}`;
-    const bengaliTitle = payloadData?.bengaliTitle || `স্বয়ংক্রিয় এআই অ্যাপ: ${command.slice(0, 30)}`;
-    const message = payloadData?.spokenBengali || `বাবু, তোমার নির্দেশ মতো "${command}"-এর সবকিছু বিভিন্ন এআই মডেল থেকে এনে স্বয়ংক্রিয়ভাবে তৈরি করেছি ❤️ নিচে সরাসরি লাইভ প্রিভিউ দেখো!`;
+    markStep(3, 'running', 'Restricted browser sandbox প্রস্তুত করা হচ্ছে।');
+    await new Promise((r) => setTimeout(r, 100));
+    markStep(3, 'done', 'Preview iframe-এ দেখা যাবে; server-side execution বা network integration নেই।');
+
+    markStep(4, 'done', 'Preview inspect করার জন্য প্রস্তুত; production build/test/deploy verification হয়নি।');
+
+    const title = payloadData.taskTitle;
+    const bengaliTitle = payloadData.bengaliTitle;
+    const message = payloadData.provider === 'fallback'
+      ? 'বাবু, আসল Gemini preview পাওয়া যায়নি, তাই শুধু built-in sample template দেখাচ্ছি। এটি তোমার চাওয়া app-এর পূর্ণ implementation নয় এবং build/test/deploy করা হয়নি। ❤️'
+      : 'বাবু, Gemini API থেকে browser preview HTML এসেছে। এটি একটি prototype preview; compile, automated test বা deployment verification করা হয়নি। ❤️';
 
     return {
       id: `agent_auto_${Date.now()}`,
       type: 'autonomous_builder',
       title,
       bengaliTitle,
-      targetApp: 'Google AI Studio & Sandbox',
+      targetApp: 'Browser Preview Sandbox',
       steps,
       success: true,
       message,
       payload: {
         taskTitle: title,
-        summary: payloadData?.summary || 'মাল্টি-মডেল এআই প্রযুক্তির সাহায্যে তৈরি স্বয়ংক্রিয় ফুল-স্ট্যাক অ্যাপ।',
-        techStack: payloadData?.techStack || ['Gemini 3.8 Flash', 'Google AI Studio', 'React 18', 'Tailwind CSS'],
-        modelsInvolved: payloadData?.modelsInvolved || [
-          'Gemini 3.8 Flash (Core Reasoning & Logic)',
-          'UI/UX Design Model (Tailwind Glassmorphism)',
-          'DeepSeek Code Synthesizer (Full State Management)'
-        ],
-        files: payloadData?.files || [],
-        livePreviewHtml: payloadData?.livePreviewHtml || '',
+        summary: payloadData.summary,
+        techStack: payloadData.techStack,
+        modelsInvolved: payloadData.modelsInvolved,
+        files: payloadData.files,
+        livePreviewHtml: payloadData.livePreviewHtml,
       },
     };
   }
