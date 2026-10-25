@@ -54,7 +54,7 @@ export function validateDailyAffirmationRequest(input: unknown): DailyAffirmatio
     if (typeof input.userName !== 'string') {
       return { success: false, error: 'User name must be a string.' };
     }
-    if (input.userName.length > 200) {
+    if (input.userName.length > MAX_USER_NAME_LENGTH) {
       return { success: false, error: `User name must be ${MAX_USER_NAME_LENGTH} characters or fewer.` };
     }
     if (CONTROL_CHARACTERS.test(input.userName)) {
