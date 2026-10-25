@@ -68,7 +68,27 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
 
   // Dispatch only through a native bridge; never simulate device actions as completed.
   const handleExecuteAction = async (app: AppDefinition, action: InAppAction, payload?: string) => {
-    const finalPayload = payload || customPayload || action.defaultPayload || '';
+    const finalPayload = (payload ?? customPayload ?? '').trim();
+    if (action.requiresInput && !finalPayload) {
+      const message = 'এই action-এর জন্য message বা input প্রয়োজন। কিছুই পাঠানো হয়নি; আগে content লিখুন।';
+      setIsExecuting(false);
+      setExecutionSuccess(false);
+      setExecutionPending(false);
+      setExecutionFailed(true);
+      setExecutionMessage(message);
+      setCurrentStepIndex(-1);
+      setExecutionSteps(['Required input is missing.', 'No action was dispatched.']);
+      addActivityLog({
+        title: `In-App Control Not Executed: ${app.name} -> ${action.name}`,
+        type: 'action',
+        service: 'Android Accessibility Bridge',
+        status: 'FAILED',
+        details: `Required input was missing for action ID ${action.id}. No action was dispatched.`,
+      });
+      speakText(message, 'caring');
+      return;
+    }
+
     setIsExecuting(true);
     setExecutionSuccess(false);
     setExecutionPending(false);
@@ -495,6 +515,11 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
                   );
                 })}
               </div>
+              {executionMessage && (
+                <p className={`text-xs leading-relaxed ${executionSuccess ? 'text-emerald-200' : executionPending ? 'text-amber-200' : executionFailed ? 'text-rose-200' : 'text-slate-300'}`}>
+                  {executionMessage}
+                </p>
+              )}
             </div>
           )}
 
