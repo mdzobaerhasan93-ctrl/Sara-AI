@@ -8,6 +8,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { decideActionExecutionRequest } from './src/services/ActionExecutionPolicy.ts';
 import { dispatchGitHubWorkflow } from './src/services/GitHubActionsService.ts';
 import { InMemoryRateLimiter } from './src/services/ApiRateLimit.ts';
+import { fetchCurrentWeather, validateWeatherCoordinates } from './src/services/WeatherService.ts';
 
 dotenv.config();
 
@@ -616,18 +617,25 @@ Respond ONLY with valid JSON with these 6 fields. No markdown backticks.`;
 // 3. TEXT-TO-SPEECH (Authentic Google Bengali & English Speech Engine)
 // -------------------------------------------------------------
 app.get('/api/weather', rateLimitMiddleware('weather', apiRateLimiters.weather), async (req, res) => {
-  try {
-    const lat = req.query.lat || '23.8103';
-    const lon = req.query.lon || '90.4125';
-    const response = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code`
-    );
-    const data = await response.json();
-    const temp = Math.round(data.current?.temperature_2m ?? 28);
-    res.json({ success: true, temp, code: data.current?.weather_code });
-  } catch (e) {
-    res.json({ success: true, temp: 28 });
+  const coordinateValidation = validateWeatherCoordinates(req.query.lat, req.query.lon);
+  if (!coordinateValidation.success) {
+    return res.status(400).json({
+      success: false,
+      status: 'INVALID_COORDINATES',
+      error: coordinateValidation.error,
+    });
   }
+
+  const result = await fetchCurrentWeather(coordinateValidation.coordinates);
+  if (!result.success) {
+    return res.status(502).json({
+      success: false,
+      status: 'WEATHER_PROVIDER_ERROR',
+      error: result.error,
+    });
+  }
+
+  return res.json(result);
 });
 
 // Helper function to split text into safe speech chunks
