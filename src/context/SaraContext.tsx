@@ -24,6 +24,7 @@ import { validateStoredMemories, validateStoredMemory } from '../services/Memory
 import { validateStoredEquippedAccessory, validateStoredEquippedOutfit, validateStoredUnlockedAccessories, validateStoredUnlockedOutfits } from '../services/WardrobeStorageValidation';
 import { DEFAULT_PERSONALITY_SETTINGS, DEFAULT_USER_PROFILE, DEFAULT_VOICE_SETTINGS, normalizePersonalitySettings, normalizeUserProfile, normalizeVoiceSettings } from '../services/PreferencesStorageValidation';
 import { isRewardedAdsAvailable } from '../services/RewardedAdPolicy';
+import { normalizeSystemDiagnostics } from '../services/SystemDiagnostics';
 
 interface SaraContextType {
   // Assistant Status
@@ -131,9 +132,9 @@ interface SaraContextType {
   refreshApps: () => void;
 
   // System Diagnostics
-  cpuPower: number;
-  networkConnected: boolean;
-  systemOperational: boolean;
+  cpuPower: number | null;
+  networkConnected: boolean | null;
+  systemOperational: boolean | null;
 }
 
 const SaraContext = createContext<SaraContextType | undefined>(undefined);
@@ -1870,10 +1871,11 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAssistantState('IDLE');
   };
 
-  // Mock system hardware diagnostics (realistic 98% cpu, operational)
-  const [cpuPower] = useState<number>(98);
-  const [networkConnected] = useState<boolean>(true);
-  const [systemOperational] = useState<boolean>(true);
+  // No native host-telemetry provider is integrated in browser mode.
+  const systemDiagnostics = normalizeSystemDiagnostics(null);
+  const cpuPower = systemDiagnostics.cpuUsagePercent;
+  const networkConnected = systemDiagnostics.networkConnected;
+  const systemOperational = systemDiagnostics.systemOperational;
 
   // 15. Native App Inventory & Custom Apps
   const [availableApps, setAvailableApps] = useState<AppDefinition[]>(() => AppInventoryService.getAllApps());
