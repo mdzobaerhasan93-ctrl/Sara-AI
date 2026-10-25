@@ -21,6 +21,7 @@ import { planAutomationExecution } from '../services/AutomationExecutionPlan';
 import { validateStoredAutomations } from '../services/AutomationStorageValidation';
 import { validateStoredChatHistory } from '../services/ChatHistoryValidation';
 import { validateStoredMemories, validateStoredMemory } from '../services/MemoryStorageValidation';
+import { DEFAULT_PERSONALITY_SETTINGS, DEFAULT_USER_PROFILE, DEFAULT_VOICE_SETTINGS, normalizePersonalitySettings, normalizeUserProfile, normalizeVoiceSettings } from '../services/PreferencesStorageValidation';
 
 interface SaraContextType {
   // Assistant Status
@@ -150,79 +151,101 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // 2. User Profile (persisted)
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
-    const saved = localStorage.getItem('sara_user_profile');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { }
+    let saved: string | null = null;
+    try {
+      saved = typeof localStorage !== 'undefined' ? localStorage.getItem('sara_user_profile') : null;
+    } catch {
+      saved = null;
     }
-    return {
-      id: 'usr_zobaer_01',
-      name: 'zobaer',
-      email: 'zobaerhasan431@gmail.com',
-      avatarUrl: '',
-      language: 'Bengali',
-      timezone: 'UTC+6 GMT+06:00',
-      personality: 'GirlFriend',
-      loveMode: true,
-      wakeWord: 'Hello Hello',
-      dismissWord: 'Bye Bye',
-      autoTimeoutSeconds: 10,
-    };
+
+    if (saved) {
+      try {
+        return normalizeUserProfile(JSON.parse(saved));
+      } catch {
+        // Invalid stored JSON falls back to the safe default profile.
+      }
+    }
+    return { ...DEFAULT_USER_PROFILE };
   });
 
   useEffect(() => {
-    localStorage.setItem('sara_user_profile', JSON.stringify(userProfile));
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('sara_user_profile', JSON.stringify(normalizeUserProfile(userProfile)));
+      }
+    } catch {
+      // The profile remains usable if browser storage is disabled or full.
+    }
   }, [userProfile]);
 
   const updateUserProfile = (patch: Partial<UserProfile>) => {
-    setUserProfile((prev) => ({ ...prev, ...patch }));
+    setUserProfile((prev) => normalizeUserProfile({ ...prev, ...patch }, prev));
   };
 
   // 3. Personality Settings
   const [personalitySettings, setPersonalitySettings] = useState<PersonalitySettings>(() => {
-    const saved = localStorage.getItem('sara_personality_settings');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { }
+    let saved: string | null = null;
+    try {
+      saved = typeof localStorage !== 'undefined' ? localStorage.getItem('sara_personality_settings') : null;
+    } catch {
+      saved = null;
     }
-    return {
-      warmth: 95,
-      playfulness: 88,
-      romance: 92,
-      affection: 96,
-      formality: 15,
-      responseLength: 'expressive',
-      emojiFrequency: 'abundant',
-    };
+
+    if (saved) {
+      try {
+        return normalizePersonalitySettings(JSON.parse(saved));
+      } catch {
+        // Invalid stored JSON falls back to safe default settings.
+      }
+    }
+    return { ...DEFAULT_PERSONALITY_SETTINGS };
   });
 
   useEffect(() => {
-    localStorage.setItem('sara_personality_settings', JSON.stringify(personalitySettings));
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('sara_personality_settings', JSON.stringify(normalizePersonalitySettings(personalitySettings)));
+      }
+    } catch {
+      // The settings remain usable if browser storage is disabled or full.
+    }
   }, [personalitySettings]);
 
   const updatePersonalitySettings = (patch: Partial<PersonalitySettings>) => {
-    setPersonalitySettings((prev) => ({ ...prev, ...patch }));
+    setPersonalitySettings((prev) => normalizePersonalitySettings({ ...prev, ...patch }, prev));
   };
 
   // 4. Voice Settings
   const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>(() => {
-    const saved = localStorage.getItem('sara_voice_settings');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { }
+    let saved: string | null = null;
+    try {
+      saved = typeof localStorage !== 'undefined' ? localStorage.getItem('sara_voice_settings') : null;
+    } catch {
+      saved = null;
     }
-    return {
-      voice: 'Zephyr',
-      speed: 1.0,
-      pitch: 1.05,
-      autoSpeak: true,
-      provider: 'gemini-tts',
-    };
+
+    if (saved) {
+      try {
+        return normalizeVoiceSettings(JSON.parse(saved));
+      } catch {
+        // Invalid stored JSON falls back to safe default voice settings.
+      }
+    }
+    return { ...DEFAULT_VOICE_SETTINGS };
   });
 
   useEffect(() => {
-    localStorage.setItem('sara_voice_settings', JSON.stringify(voiceSettings));
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('sara_voice_settings', JSON.stringify(normalizeVoiceSettings(voiceSettings)));
+      }
+    } catch {
+      // The settings remain usable if browser storage is disabled or full.
+    }
   }, [voiceSettings]);
 
   const updateVoiceSettings = (patch: Partial<VoiceSettings>) => {
-    setVoiceSettings((prev) => ({ ...prev, ...patch }));
+    setVoiceSettings((prev) => normalizeVoiceSettings({ ...prev, ...patch }, prev));
   };
 
   // 5. Active Avatar
