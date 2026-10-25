@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { WebSocketServer, WebSocket } from 'ws';
 import { decideActionExecutionRequest } from './src/services/ActionExecutionPolicy.ts';
+import { buildMemoryContext } from './src/services/MemoryContext.ts';
 
 dotenv.config();
 
@@ -56,9 +57,7 @@ app.post('/api/chat', async (req, res) => {
     const romance = personalitySettings.romance ?? 80;
     const affection = personalitySettings.affection ?? 90;
 
-    const memorySnippet = memories.length > 0
-      ? `Important user memories you must remember:\n${memories.map((m: any) => `- [${m.category}] ${m.content}`).join('\n')}\n`
-      : 'No stored memories yet.';
+    const memorySnippet = buildMemoryContext(memories);
 
     const systemInstruction = `
 You are Sara (সারা), an affectionate AI companion and virtual girlfriend.
