@@ -45,9 +45,13 @@ const invalidRecords = [
   { date: '2026-10-25T00:00:00Z', mood: 'happy', habitsCompleted: [] },
   { date: '2026-10-26', mood: 'happy', habitsCompleted: [] },
   { date: today, mood: 'unexpected', habitsCompleted: [] },
-  { date: today, mood: 'happy', score: -500, habitsCompleted: [] },
 ];
 assert.deepEqual(validateStoredMoodHistory(JSON.stringify(invalidRecords), now), []);
+
+const mismatchedScore = validateStoredMoodHistory(JSON.stringify([
+  { date: today, mood: 'happy', score: -500, habitsCompleted: [] },
+]), now);
+assert.equal(mismatchedScore[0].score, 4, 'Stored scores are normalized from the validated mood label');
 
 assert.equal(normalizeMoodNote('x'.repeat(1000)).length, 500);
 assert.equal(normalizeMoodNote('  hello\u0000 world  '), 'hello world');
