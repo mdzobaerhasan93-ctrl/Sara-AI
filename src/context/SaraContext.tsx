@@ -21,6 +21,7 @@ import { planAutomationExecution } from '../services/AutomationExecutionPlan';
 import { validateStoredAutomations } from '../services/AutomationStorageValidation';
 import { validateStoredChatHistory } from '../services/ChatHistoryValidation';
 import { validateStoredMemories, validateStoredMemory } from '../services/MemoryStorageValidation';
+import { validateStoredAdsWatched, validateStoredCoinBalance, validateStoredDailyStreak, validateStoredLastClaimDate, validateStoredPassExpiry } from '../services/EconomyStorageValidation';
 import { DEFAULT_PERSONALITY_SETTINGS, DEFAULT_USER_PROFILE, DEFAULT_VOICE_SETTINGS, normalizePersonalitySettings, normalizeUserProfile, normalizeVoiceSettings } from '../services/PreferencesStorageValidation';
 
 interface SaraContextType {
@@ -738,13 +739,11 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // 11. Coins & Economy
   const [coinBalance, setCoinBalance] = useState<number>(() => {
-    const saved = localStorage.getItem('sara_coin_balance');
-    return saved !== null ? parseInt(saved, 10) : 110;
+    return validateStoredCoinBalance(localStorage.getItem('sara_coin_balance'));
   });
 
   const [adsWatchedToday, setAdsWatchedToday] = useState<number>(() => {
-    const saved = localStorage.getItem('sara_ads_watched');
-    return saved !== null ? parseInt(saved, 10) : 5;
+    return validateStoredAdsWatched(localStorage.getItem('sara_ads_watched'));
   });
 
   const [coinTransactions, setCoinTransactions] = useState<CoinTransaction[]>([
@@ -786,18 +785,16 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
   ]);
 
   const [lastClaimDate, setLastClaimDate] = useState<string>(() => {
-    return localStorage.getItem('sara_last_claim_date') || '';
+    return validateStoredLastClaimDate(localStorage.getItem('sara_last_claim_date'));
   });
 
   const [dailyStreak, setDailyStreak] = useState<number>(() => {
-    const s = localStorage.getItem('sara_daily_streak');
-    return s ? parseInt(s, 10) : 1;
+    return validateStoredDailyStreak(localStorage.getItem('sara_daily_streak'));
   });
 
   const [passExpiresAt, setPassExpiresAt] = useState<number>(() => {
-    const saved = localStorage.getItem('sara_pass_expiry');
-    // Default pass active 6 hours from launch
-    return saved ? parseInt(saved, 10) : Date.now() + 5.65 * 60 * 60 * 1000;
+    // Missing storage retains the existing trial duration; malformed stored values fail closed.
+    return validateStoredPassExpiry(localStorage.getItem('sara_pass_expiry'), Date.now());
   });
 
   useEffect(() => {
