@@ -1,5 +1,12 @@
 import assert from 'node:assert/strict';
-import { dispatchDirectAppAction } from '../src/services/DirectAppExecution.ts';
+import { dispatchDirectAppAction, extractExplicitActionPayload } from '../src/services/DirectAppExecution.ts';
+
+assert.equal(extractExplicitActionPayload('Instagram-এ comment করো'), null, 'An action without explicit content must not get an invented payload');
+assert.equal(extractExplicitActionPayload('Facebook status: আজকের দিনটা সুন্দর'), 'আজকের দিনটা সুন্দর');
+assert.equal(extractExplicitActionPayload('WhatsApp মেসেজ পাঠাও "আমি পথে আছি"'), 'আমি পথে আছি');
+assert.equal(extractExplicitActionPayload('Instagram caption: ' + 'x'.repeat(600))?.length, 500);
+assert.equal(extractExplicitActionPayload('text: \u0000\u0007'), null);
+assert.equal(extractExplicitActionPayload('x'.repeat(8001)), null);
 
 const request = {
   packageName: 'com.instagram.android',
