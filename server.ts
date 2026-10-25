@@ -10,7 +10,7 @@ import { dispatchGitHubWorkflow } from './src/services/GitHubActionsService.ts';
 import { InMemoryRateLimiter } from './src/services/ApiRateLimit.ts';
 import { validateHighThinkingRequest } from './src/services/HighThinkingRequestValidation.ts';
 import { fetchCurrentWeather, validateWeatherCoordinates } from './src/services/WeatherService.ts';
-import { normalizeDailyAffirmationResult, validateDailyAffirmationRequest } from './src/services/DailyAffirmationValidation.ts';
+import { buildFallbackDailyAffirmation, normalizeDailyAffirmationResult, validateDailyAffirmationRequest } from './src/services/DailyAffirmationValidation.ts';
 
 dotenv.config();
 
@@ -575,58 +575,7 @@ Respond ONLY with valid JSON with these 6 fields. No markdown backticks.`;
     }
 
     if (!resultData) {
-      const fallbackList = [
-        {
-          quoteBn: `${userName}, তুমি যতটা ভাবছো তার চেয়েও অনেক বেশি শক্তিশালী সোনা। আজকে নিজের সেরাটা দিয়ে জয় করো দিনটা, আমি সারাক্ষণ তোমার সাথে আছি ❤️`,
-          quoteEn: 'You are so much stronger than you think. Conquer today; I am right beside you always.',
-          greeting: `শুভ সকাল ${userName}! ❤️ আজকের প্রতিটি মুহূর্ত তোমার জন্য আনন্দময় হোক।`,
-          emotion: 'romantic',
-          tag: 'Strength & Love',
-          audioScript: `শুভ সকাল ${userName}! তুমি যতটা ভাবছো তার চেয়েও অনেক বেশি শক্তিশালী সোনা। আমি সারাক্ষণ তোমার সাথে আছি ❤️`,
-        },
-        {
-          quoteBn: 'ক্লান্ত লাগলে একটু জিরিয়ে নাও বাবু, কিন্তু কখনো আশা ছেড়ো না। প্রতিটি ছোট পদক্ষেপই তোমাকে তোমার স্বপ্নের কাছে নিয়ে যাচ্ছে ✨',
-          quoteEn: 'Rest when you are weary, but never lose hope. Every small step brings you closer to your dreams.',
-          greeting: `হ্যালো আমার প্রিয় ${userName}! 🥰 নতুন একটি দিনের মিষ্টি শুভেচ্ছা।`,
-          emotion: 'caring',
-          tag: 'Care & Hope',
-          audioScript: 'ক্লান্ত লাগলে একটু জিরিয়ে নাও বাবু, কিন্তু কখনো আশা ছেড়ো না। আমি সবসময় তোমার পাশে আছি সোনা ✨',
-        },
-        {
-          quoteBn: 'আজকের সকালটা একদম তোমার জন্য একটা নতুন উপহার! মুখে মিষ্টি একটা হাসি রাখো, তোমার হাসিতেই তো আমার পৃথিবী আলোকিত হয় 🥰',
-          quoteEn: 'Today is a brand new gift just for you. Keep that sweet smile on; it lights up my world.',
-          greeting: 'শুভ সকাল সোনা! 🌸 তোমার দিনটি অনেক সুন্দর হোক।',
-          emotion: 'happy',
-          tag: 'Joy & Sunshine',
-          audioScript: 'আজকের সকালটা একদম তোমার জন্য একটা নতুন উপহার! মুখে মিষ্টি একটা হাসি রাখো সোনা 🥰',
-        },
-        {
-          quoteBn: 'কখনো নিজেকে একা ভাববে না। কঠিন সময়েও নিজের যত্ন নিও, আর প্রয়োজন হলে বিশ্বাসের কাউকে পাশে রাখো। 💖',
-          quoteEn: 'You are not alone. Take care of yourself and reach out to someone you trust when you need support.',
-          greeting: `প্রিয় ${userName}, তোমার দিনের জন্য রইল শুভকামনা। 💖`,
-          emotion: 'caring',
-          tag: 'Care & Hope',
-          audioScript: 'কখনো নিজেকে একা ভাববে না। নিজের যত্ন নিও, আর প্রয়োজন হলে বিশ্বাসের কাউকে পাশে রাখো। 💖',
-        },
-      ];
-      resultData = fallbackList[Math.floor(Math.random() * fallbackList.length)];
-    }
-    if (!isAiGenerated) {
-      const greetingByTime: Record<typeof timeOfDay, string> = {
-        morning: `শুভ সকাল ${userName}! আজকের দিনটি সুন্দর হোক। ❤️`,
-        afternoon: `শুভ দুপুর ${userName}! কাজের ফাঁকে একটু বিশ্রাম নিতে ভুলো না। ❤️`,
-        evening: `শুভ সন্ধ্যা ${userName}! দিন শেষে নিজের যত্ন নিও। ❤️`,
-        night: `শুভ রাত্রি ${userName}! বিশ্রাম নাও, আর নিজের যত্ন রেখো। ❤️`,
-        daily: `প্রিয় ${userName}, তোমার দিনের জন্য রইল আন্তরিক শুভকামনা। ❤️`,
-      };
-      resultData.greeting = greetingByTime[timeOfDay];
-      if (!loveMode) {
-        resultData.quoteBn = 'ক্লান্ত লাগলে একটু বিশ্রাম নাও, কিন্তু নিজের ওপর বিশ্বাস হারিয়ো না। ছোট ছোট পদক্ষেপও তোমাকে এগিয়ে নিয়ে যায়।';
-        resultData.quoteEn = 'Rest when you are weary, but do not lose faith in yourself. Small steps still move you forward.';
-        resultData.emotion = 'caring';
-        resultData.tag = 'Care & Hope';
-        resultData.audioScript = resultData.quoteBn;
-      }
+      resultData = buildFallbackDailyAffirmation(userName, loveMode, timeOfDay);
     }
 
     return res.json({
