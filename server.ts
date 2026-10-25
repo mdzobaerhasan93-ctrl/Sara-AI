@@ -11,6 +11,7 @@ import { InMemoryRateLimiter } from './src/services/ApiRateLimit.ts';
 import { validateHighThinkingRequest } from './src/services/HighThinkingRequestValidation.ts';
 import { fetchCurrentWeather, validateWeatherCoordinates } from './src/services/WeatherService.ts';
 import { validateMapsGroundingRequest } from './src/services/MapsGroundingValidation.ts';
+import { sanitizeMapsGroundingLinks } from './src/services/MapsGroundingLinkValidation.ts';
 
 dotenv.config();
 
@@ -825,22 +826,14 @@ app.post('/api/maps-grounding', rateLimitMiddleware('maps-grounding', apiRateLim
     });
 
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-    const mapsLinks: Array<{ title: string; uri: string }> = [];
+    const mapsLinks = sanitizeMapsGroundingLinks(groundingChunks);
 
-    groundingChunks.forEach((chunk: any) => {
-      if (typeof chunk?.maps?.uri === 'string') {
-        mapsLinks.push({
-          title: typeof chunk.maps.title === 'string' ? chunk.maps.title.slice(0, 160) : 'Google Maps Location',
-          uri: chunk.maps.uri,
-        });
-      }
-    });
-
+    // Return only the bounded, validated link contract. Raw provider chunks
+    // are omitted so their unvalidated URLs/metadata are not exposed to clients.
     return res.json({
       success: true,
-      text: typeof response.text === 'string' ? response.text : '',
+      text: typeof response.text === 'string' ? response.text.slice(0, 20_000) : '',
       mapsLinks,
-      groundingChunks,
     });
   } catch (error: any) {
     console.error('Maps Grounding request failed.');
