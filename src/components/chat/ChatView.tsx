@@ -236,7 +236,7 @@ export const ChatView: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5 text-pink-400 font-bold uppercase text-[10px]">
                         <ShieldAlert className="w-3.5 h-3.5" />
-                        <span>ACTION REQUEST • {msg.actionProposal.risk.toUpperCase()} RISK</span>
+                        <span>ACTION REQUEST • {String(msg.actionProposal.risk || 'medium').toUpperCase()} RISK</span>
                       </div>
                       <span className="px-2 py-0.5 rounded-full text-[10px] bg-pink-900/60 text-pink-300 font-mono">
                         {msg.actionProposal.service}
@@ -247,10 +247,10 @@ export const ChatView: React.FC = () => {
 
                     {/* Proposal Details */}
                     <div className="p-2 rounded-xl bg-black/40 text-slate-300 font-mono text-[11px] space-y-0.5">
-                      {Object.entries(msg.actionProposal.details).map(([k, v]) => (
+                      {Object.entries(msg.actionProposal.details && typeof msg.actionProposal.details === 'object' && !Array.isArray(msg.actionProposal.details) ? msg.actionProposal.details : {}).map(([k, v]) => (
                         <div key={k} className="flex gap-2">
                           <span className="text-slate-500">{k}:</span>
-                          <span className="text-pink-200 truncate">{String(v)}</span>
+                          <span className="text-pink-200 truncate">{typeof v === 'string' ? v : JSON.stringify(v)}</span>
                         </div>
                       ))}
                     </div>
