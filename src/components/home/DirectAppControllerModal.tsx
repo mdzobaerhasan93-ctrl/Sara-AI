@@ -27,6 +27,7 @@ import {
 import { useSara } from '../../context/SaraContext';
 import { AppInventoryService, AppDefinition, InAppAction } from '../../services/AppInventoryService';
 import { AIAgentService } from '../../services/AIAgentService';
+import { dispatchDirectAppAction } from '../../services/DirectAppExecution';
 
 interface DirectAppControllerModalProps {
   isOpen: boolean;
@@ -52,57 +53,115 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
   const [executionSteps, setExecutionSteps] = useState<string[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(-1);
   const [executionSuccess, setExecutionSuccess] = useState<boolean>(false);
+  const [executionPending, setExecutionPending] = useState<boolean>(false);
+  const [executionFailed, setExecutionFailed] = useState<boolean>(false);
+  const [executionMessage, setExecutionMessage] = useState<string>('');
 
   // New Custom App Registration Modal
   const [showAddAppModal, setShowAddAppModal] = useState<boolean>(false);
   const [newAppName, setNewAppName] = useState<string>('');
   const [newAppPkg, setNewAppPkg] = useState<string>('');
   const [newAppCategory, setNewAppCategory] = useState<AppDefinition['category']>('social');
+  const hasNativeAccessibilityBridge = typeof window !== 'undefined' && typeof (window as any).AndroidBridge?.performAccessibilityAction === 'function';
 
   if (!isOpen) return null;
 
-  // Execute in-app action step-by-step
+  // Dispatch only through a native bridge; never simulate device actions as completed.
   const handleExecuteAction = async (app: AppDefinition, action: InAppAction, payload?: string) => {
-    const finalPayload = payload || customPayload || action.defaultPayload || '';
+    const finalPayload = (payload ?? customPayload ?? '').trim();
+    if (action.requiresInput && !finalPayload) {
+      const message = 'এই action-এর জন্য message বা input প্রয়োজন। কিছুই পাঠানো হয়নি; আগে content লিখুন।';
+      setIsExecuting(false);
+      setExecutionSuccess(false);
+      setExecutionPending(false);
+      setExecutionFailed(true);
+      setExecutionMessage(message);
+      setCurrentStepIndex(-1);
+      setExecutionSteps(['Required input is missing.', 'No action was dispatched.']);
+      addActivityLog({
+        title: `In-App Control Not Executed: ${app.name} -> ${action.name}`,
+        type: 'action',
+        service: 'Android Accessibility Bridge',
+        status: 'FAILED',
+        details: `Required input was missing for action ID ${action.id}. No action was dispatched.`,
+      });
+      speakText(message, 'caring');
+      return;
+    }
+
     setIsExecuting(true);
     setExecutionSuccess(false);
-    setCurrentStepIndex(0);
+    setExecutionPending(false);
+    setExecutionFailed(false);
+    setExecutionMessage('');
+    setCurrentStepIndex(-1);
+    setExecutionSteps(['Checking native Android bridge availability…']);
 
-    const formattedSteps = action.steps.map((st) =>
-      st.replace('{payload}', finalPayload)
-    );
-    setExecutionSteps(formattedSteps);
+    const bridge = typeof window !== 'undefined' ? (window as any).AndroidBridge : undefined;
+    const result = await dispatchDirectAppAction(bridge, {
+      packageName: app.packageName,
+      actionId: action.id,
+      payload: finalPayload,
+    });
 
-    // Announce start in sweet voice
-    speakText(`${app.bengaliName} অ্যাপে ঢুকে ${action.bengaliName} শুরু করছি সোনা! ❤️`, 'excited');
-
-    // Step-by-step simulation with realistic accessibility delay
-    for (let i = 0; i < formattedSteps.length; i++) {
-      setCurrentStepIndex(i);
-      await new Promise((resolve) => setTimeout(resolve, 850));
-    }
-
-    setExecutionSuccess(true);
     setIsExecuting(false);
+    setCurrentStepIndex(-1);
+    setExecutionMessage(result.message);
 
-    // Native Bridge call if running in native Android container
-    if (typeof window !== 'undefined' && (window as any).AndroidBridge?.performAccessibilityAction) {
-      try {
-        (window as any).AndroidBridge.performAccessibilityAction(app.packageName, action.id, finalPayload);
-      } catch (err) {}
+    if (result.status === 'SUCCESS') {
+      setExecutionSuccess(true);
+      setExecutionPending(false);
+      setExecutionFailed(false);
+      setExecutionSteps([
+        'Native bridge dispatched the requested action.',
+        'Native bridge explicitly confirmed completion.',
+      ]);
+      const confirmation = `বাবু, ${app.bengaliName}-এ "${action.bengaliName}" কাজটি native bridge থেকে সম্পন্ন হওয়ার confirmation পেয়েছি। ❤️`;
+      speakText(confirmation, 'happy');
+      addActivityLog({
+        title: `In-App Control Completed: ${app.name} -> ${action.name}`,
+        type: 'action',
+        service: 'Android Accessibility Bridge',
+        status: 'SUCCESS',
+        details: `Native bridge confirmed completion for action ID ${action.id}. Message contents were not stored in this log.`,
+      });
+      return;
     }
 
+    if (result.status === 'PENDING') {
+      setExecutionSuccess(false);
+      setExecutionPending(true);
+      setExecutionFailed(false);
+      setExecutionSteps([
+        'Command was handed to the native bridge.',
+        'Waiting for explicit completion confirmation.',
+      ]);
+      speakText('সোনা, native bridge কমান্ডটি গ্রহণ করেছে, কিন্তু কাজ সম্পন্ন হওয়ার confirmation পাওয়া যায়নি। target app দেখে নিশ্চিত হও।', 'caring');
+      addActivityLog({
+        title: `In-App Control Pending: ${app.name} -> ${action.name}`,
+        type: 'action',
+        service: 'Android Accessibility Bridge',
+        status: 'PENDING',
+        details: `Native bridge did not explicitly verify completion for action ID ${action.id}. No success claim was made.`,
+      });
+      return;
+    }
 
-    // Loving confirmation from Sara
-    const confirmMessage = `বাবু, ${app.bengaliName}-এ গিয়ে ${action.bengaliName} সফলভাবে সম্পন্ন করেছি! 🥰`;
-    speakText(confirmMessage, 'romantic');
-
+    setExecutionSuccess(false);
+    setExecutionPending(false);
+    setExecutionFailed(true);
+    setExecutionSteps([
+      'Native Android bridge is unavailable or rejected the request.',
+      'No successful app action was confirmed.',
+    ]);
+    const failure = `বাবু, ${app.bengaliName}-এ কাজটি চালানো যায়নি। ${result.message}`;
+    speakText(failure, 'caring');
     addActivityLog({
-      title: `In-App Control: ${app.name} -> ${action.name}`,
+      title: `In-App Control Not Executed: ${app.name} -> ${action.name}`,
       type: 'action',
       service: 'Android Accessibility Bridge',
-      status: 'SUCCESS',
-      details: `Action: ${action.name}. Payload: ${finalPayload}`,
+      status: 'FAILED',
+      details: `No successful app action was confirmed for action ID ${action.id}. ${result.message}`,
     });
   };
 
@@ -117,6 +176,11 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
     if (AIAgentService.isAgentCommand(prompt)) {
       setIsExecuting(true);
       setExecutionSuccess(false);
+      setExecutionPending(false);
+      setExecutionFailed(false);
+      setExecutionMessage('');
+      setCurrentStepIndex(-1);
+      setExecutionSteps([]);
       speakText(`সোনা, আমি "${prompt}" নির্দেশ অনুযায়ী এআই এজেন্ট রান করছি ❤️`, 'excited');
       
       const agentRes = await AIAgentService.executeCommand(prompt, (step) => {
@@ -124,9 +188,12 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
       });
 
       setExecutionSteps(agentRes.steps.map((s) => `${s.title}: ${s.detail}`));
-      setExecutionSuccess(true);
+      setExecutionSuccess(agentRes.success);
+      setExecutionPending(false);
+      setExecutionFailed(!agentRes.success);
+      setExecutionMessage(agentRes.message);
       setIsExecuting(false);
-      speakText(agentRes.message, 'romantic');
+      speakText(agentRes.message, agentRes.success ? 'happy' : 'caring');
       return;
     }
 
@@ -138,13 +205,21 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
       speakText(`সোনা, আমি "${prompt}" নির্দেশটি এআই এজেন্টের মাধ্যমে প্রসেস করছি ❤️`, 'caring');
       setIsExecuting(true);
       setExecutionSuccess(false);
+      setExecutionPending(false);
+      setExecutionFailed(false);
+      setExecutionMessage('');
+      setCurrentStepIndex(-1);
+      setExecutionSteps([]);
       const agentRes = await AIAgentService.executeCommand(prompt, (step) => {
         setExecutionSteps((prev) => [...prev, `${step.title}: ${step.detail}`]);
       });
       setExecutionSteps(agentRes.steps.map((s) => `${s.title}: ${s.detail}`));
-      setExecutionSuccess(true);
+      setExecutionSuccess(agentRes.success);
+      setExecutionPending(false);
+      setExecutionFailed(!agentRes.success);
+      setExecutionMessage(agentRes.message);
       setIsExecuting(false);
-      speakText(agentRes.message, 'romantic');
+      speakText(agentRes.message, agentRes.success ? 'happy' : 'caring');
     }
   };
 
@@ -202,13 +277,13 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
                 <h2 className="text-base font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-300 via-purple-200 to-cyan-300">
                   সরাসরি অ্যাপ কন্ট্রোলার ও অটোমেশন
                 </h2>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  ACCESSIBILITY LIVE
+                <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold flex items-center gap-1 ${hasNativeAccessibilityBridge ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-rose-500/15 text-rose-300 border-rose-500/30'}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${hasNativeAccessibilityBridge ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                  {hasNativeAccessibilityBridge ? 'NATIVE BRIDGE FOUND' : 'NATIVE BRIDGE UNAVAILABLE'}
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">
-                ফোনে থাকা যেকোনো অ্যাপের ভেতর ঢুকে নির্দেশ অনুযায়ী স্বয়ংক্রিয় কাজ সম্পাদন
+                Native Android bridge থাকলেই supported device actions পাঠানো যাবে; browser preview-তে app control চলে না।
               </p>
             </div>
           </div>
@@ -315,7 +390,7 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
                       </span>
                     </h3>
                     <p className="text-[11px] text-slate-400">
-                      নিচের যেকোনো অ্যাকশনে ট্যাপ করলেই সারা অ্যাপের ভেতরে ঢুকে কাজটি সম্পন্ন করবে
+                      নিচের action-টি native bridge-এ dispatch করার চেষ্টা হবে; completion কেবল explicit confirmation পেলে success দেখাবে।
                     </p>
                   </div>
                 </div>
@@ -397,13 +472,13 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
           )}
 
           {/* 3. Live In-App Execution HUD & Accessibility Stream */}
-          {(isExecuting || executionSuccess) && (
+          {(isExecuting || executionSuccess || executionPending || executionFailed) && (
             <div className="p-4 rounded-3xl bg-gradient-to-br from-[#0c0924] to-[#12071f] border border-pink-500/40 shadow-[0_0_25px_rgba(255,46,147,0.2)] animate-in zoom-in-95 space-y-3">
               <div className="flex items-center justify-between border-b border-pink-500/20 pb-2">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-pink-500 animate-ping" />
+                  <div className={`w-2 h-2 rounded-full ${isExecuting ? 'bg-pink-500 animate-ping' : executionSuccess ? 'bg-emerald-400' : executionPending ? 'bg-amber-400' : 'bg-rose-400'}`} />
                   <span className="text-xs font-bold text-pink-300">
-                    {isExecuting ? 'সারার লাইভ অ্যাকশন এক্সিকিউশন চলছে...' : 'অটোমেশন সফলভাবে সম্পন্ন! 🎉'}
+                    {isExecuting ? 'Native bridge availability যাচাই হচ্ছে…' : executionSuccess ? 'Native bridge completion confirm করেছে' : executionPending ? 'Bridge-এ পাঠানো হয়েছে; completion unverified' : 'অ্যাকশন চালানো হয়নি'}
                   </span>
                 </div>
                 <span className="text-[10px] font-mono text-cyan-300">
@@ -414,8 +489,8 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
               {/* Execution Steps */}
               <div className="space-y-2">
                 {executionSteps.map((step, idx) => {
-                  const isDone = currentStepIndex > idx || executionSuccess;
-                  const isCurrent = currentStepIndex === idx && isExecuting;
+                  const isDone = executionSuccess;
+                  const isCurrent = isExecuting && idx === 0;
 
                   return (
                     <div
@@ -425,7 +500,11 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
                           ? 'text-emerald-300'
                           : isCurrent
                           ? 'text-pink-300 font-bold scale-101'
-                          : 'text-slate-500'
+                          : executionFailed
+                            ? 'text-rose-300'
+                            : executionPending
+                              ? 'text-amber-200'
+                              : 'text-slate-500'
                       }`}
                     >
                       <div className="mt-0.5 shrink-0">
@@ -433,6 +512,8 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
                           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                         ) : isCurrent ? (
                           <Loader2 className="w-4 h-4 text-pink-400 animate-spin" />
+                        ) : executionFailed ? (
+                          <AlertCircle className="w-4 h-4 text-rose-400" />
                         ) : (
                           <div className="w-4 h-4 rounded-full border border-slate-700 flex items-center justify-center text-[9px]">
                             {idx + 1}
@@ -444,16 +525,23 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
                   );
                 })}
               </div>
+              {executionMessage && (
+                <p className={`text-xs leading-relaxed ${executionSuccess ? 'text-emerald-200' : executionPending ? 'text-amber-200' : executionFailed ? 'text-rose-200' : 'text-slate-300'}`}>
+                  {executionMessage}
+                </p>
+              )}
             </div>
           )}
 
-          {/* 4. Android Accessibility & Overlay Service Info */}
+          {/* Native accessibility capability status */}
           <div className="p-3 rounded-2xl bg-slate-900/40 border border-slate-800 text-[11px] text-slate-400 flex items-start gap-2.5">
-            <Shield className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+            <Shield className={`w-4 h-4 shrink-0 mt-0.5 ${hasNativeAccessibilityBridge ? 'text-emerald-400' : 'text-rose-400'}`} />
             <div>
-              <p className="font-bold text-slate-300">Android Accessibility Service ও Overlay পারমিশন অ্যাক্টিভ</p>
+              <p className="font-bold text-slate-300">Native Android bridge status</p>
               <p className="text-[10px] text-slate-400 mt-0.5">
-                সারা এই প্রযুক্তির মাধ্যমে আপনার ডিভাইসের ব্যাকগ্রাউন্ডে বা অন্য যেকোনো অ্যাপ ওপেন থাকা অবস্থায় ভাসমান উইজেট হিসেবে কাজ করে এবং রিলস, স্ট্যাটাস, কমেন্ট বা মেসেজ সরাসরি টাইপ করে পাঠাতে পারে।
+                {hasNativeAccessibilityBridge
+                  ? 'Bridge detected. An action is not considered complete unless the bridge returns an explicit success and completion acknowledgement.'
+                  : 'বর্তমান environment-এ native Android accessibility bridge পাওয়া যায়নি। এখানে অন্য app-এর ভিতরে tap, type, comment বা message action চালানো হবে না।'}
               </p>
             </div>
           </div>
@@ -463,8 +551,10 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
         {/* Modal Footer */}
         <div className="p-3 border-t border-pink-500/20 bg-slate-950 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <span className="text-[11px] text-slate-300 font-semibold">সারা ফুল কন্ট্রোল মোড প্রস্তুত</span>
+            <span className={`w-2 h-2 rounded-full ${hasNativeAccessibilityBridge ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+            <span className="text-[11px] text-slate-300 font-semibold">
+              {hasNativeAccessibilityBridge ? 'Native bridge detected' : 'Browser-only mode · device control unavailable'}
+            </span>
           </div>
 
           <button
