@@ -176,6 +176,11 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
     if (AIAgentService.isAgentCommand(prompt)) {
       setIsExecuting(true);
       setExecutionSuccess(false);
+      setExecutionPending(false);
+      setExecutionFailed(false);
+      setExecutionMessage('');
+      setCurrentStepIndex(-1);
+      setExecutionSteps([]);
       speakText(`সোনা, আমি "${prompt}" নির্দেশ অনুযায়ী এআই এজেন্ট রান করছি ❤️`, 'excited');
       
       const agentRes = await AIAgentService.executeCommand(prompt, (step) => {
@@ -200,6 +205,11 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
       speakText(`সোনা, আমি "${prompt}" নির্দেশটি এআই এজেন্টের মাধ্যমে প্রসেস করছি ❤️`, 'caring');
       setIsExecuting(true);
       setExecutionSuccess(false);
+      setExecutionPending(false);
+      setExecutionFailed(false);
+      setExecutionMessage('');
+      setCurrentStepIndex(-1);
+      setExecutionSteps([]);
       const agentRes = await AIAgentService.executeCommand(prompt, (step) => {
         setExecutionSteps((prev) => [...prev, `${step.title}: ${step.detail}`]);
       });
