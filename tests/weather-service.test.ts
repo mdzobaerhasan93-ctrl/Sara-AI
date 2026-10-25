@@ -32,9 +32,9 @@ for (const [lat, lon] of [
   assert.equal(validateWeatherCoordinates(lat, lon).success, false, `Invalid coordinates should be rejected: ${String(lat)}, ${String(lon)}`);
 }
 
-let seenUrl: URL | null = null;
+let seenUrl = 'https://example.invalid';
 const successfulFetch: typeof fetch = async (input) => {
-  seenUrl = new URL(String(input));
+  seenUrl = String(input);
   return new Response(JSON.stringify({
     current: {
       temperature_2m: 27.6,
@@ -52,9 +52,9 @@ const current = await fetchCurrentWeather(
   successfulFetch,
 );
 assert.deepEqual(current, { success: true, temp: 28, code: 3, humidity: 83 });
-assert.equal(seenUrl?.origin, 'https://api.open-meteo.com');
-assert.equal(seenUrl?.searchParams.get('latitude'), '23.8103');
-assert.equal(seenUrl?.searchParams.get('longitude'), '90.4125');
+assert.equal(new URL(seenUrl).origin, 'https://api.open-meteo.com');
+assert.equal(new URL(seenUrl).searchParams.get('latitude'), '23.8103');
+assert.equal(new URL(seenUrl).searchParams.get('longitude'), '90.4125');
 
 const exactZeroFetch: typeof fetch = async () => new Response(JSON.stringify({
   current: { temperature_2m: 0, relative_humidity_2m: 0, weather_code: 0 },
