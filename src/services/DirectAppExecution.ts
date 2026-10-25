@@ -36,7 +36,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isAndroidActionBridge(value: unknown): value is AndroidActionBridge {
-  return isRecord(value) && typeof value.performAccessibilityAction === 'function';
+  return value !== null
+    && typeof value === 'object'
+    && !Array.isArray(value)
+    && typeof (value as { performAccessibilityAction?: unknown }).performAccessibilityAction === 'function';
 }
 
 /**
