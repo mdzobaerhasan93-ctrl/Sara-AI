@@ -21,6 +21,7 @@ import { planAutomationExecution } from '../services/AutomationExecutionPlan';
 import { validateStoredAutomations } from '../services/AutomationStorageValidation';
 import { validateStoredChatHistory } from '../services/ChatHistoryValidation';
 import { validateStoredMemories, validateStoredMemory } from '../services/MemoryStorageValidation';
+import { validateStoredCoinTransactions } from '../services/CoinTransactionStorageValidation';
 import { validateStoredEquippedAccessory, validateStoredEquippedOutfit, validateStoredUnlockedAccessories, validateStoredUnlockedOutfits } from '../services/WardrobeStorageValidation';
 import { DEFAULT_PERSONALITY_SETTINGS, DEFAULT_USER_PROFILE, DEFAULT_VOICE_SETTINGS, normalizePersonalitySettings, normalizeUserProfile, normalizeVoiceSettings } from '../services/PreferencesStorageValidation';
 
@@ -748,43 +749,13 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return saved !== null ? parseInt(saved, 10) : 5;
   });
 
-  const [coinTransactions, setCoinTransactions] = useState<CoinTransaction[]>([
-    {
-      id: 'tx_5',
-      title: 'Rewarded ad #5 of 5',
-      amount: 20,
-      type: 'rewarded_ad',
-      timestamp: 'Today, 05:39 PM',
-    },
-    {
-      id: 'tx_4',
-      title: 'Rewarded ad #4 of 5',
-      amount: 20,
-      type: 'rewarded_ad',
-      timestamp: 'Today, 05:38 PM',
-    },
-    {
-      id: 'tx_3',
-      title: 'Rewarded ad #3 of 5',
-      amount: 20,
-      type: 'rewarded_ad',
-      timestamp: 'Today, 05:37 PM',
-    },
-    {
-      id: 'tx_2',
-      title: 'Rewarded ad #2 of 5',
-      amount: 20,
-      type: 'rewarded_ad',
-      timestamp: 'Today, 05:36 PM',
-    },
-    {
-      id: 'tx_1',
-      title: 'Daily reward (streak day 1)',
-      amount: 10,
-      type: 'daily_reward',
-      timestamp: 'Today, 05:35 PM',
-    },
-  ]);
+  const [coinTransactions, setCoinTransactions] = useState<CoinTransaction[]>(() => {
+    return validateStoredCoinTransactions(localStorage.getItem('sara_coin_transactions'));
+  });
+
+  useEffect(() => {
+    localStorage.setItem('sara_coin_transactions', JSON.stringify(coinTransactions));
+  }, [coinTransactions]);
 
   const [lastClaimDate, setLastClaimDate] = useState<string>(() => {
     return localStorage.getItem('sara_last_claim_date') || '';
