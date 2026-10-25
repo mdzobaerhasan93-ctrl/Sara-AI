@@ -85,6 +85,13 @@ assert.deepEqual(httpFailure, {
   error: 'Weather provider returned an unsuccessful response.',
 });
 
+const malformedJsonFetch: typeof fetch = async () => new Response('{ not json', { status: 200 });
+const malformedJson = await fetchCurrentWeather({ latitude: 0, longitude: 0 }, malformedJsonFetch);
+assert.deepEqual(malformedJson, {
+  success: false,
+  error: 'Weather provider returned an unreadable response.',
+});
+
 const networkFailureFetch: typeof fetch = async () => {
   throw new Error('private upstream details should not leak');
 };
