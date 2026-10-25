@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSara } from '../../context/SaraContext';
 import { AIAgentService, AgentExecutionResult, AgentActionStep } from '../../services/AIAgentService';
+import { buildSandboxedPreviewHtml } from '../../services/PreviewSandbox';
 import { AppInventoryService, AppDefinition } from '../../services/AppInventoryService';
 import {
   Bot,
@@ -503,8 +504,8 @@ export const AIAgentHubView: React.FC = () => {
                     <div className="w-full rounded-2xl overflow-hidden border border-pink-500/30 bg-slate-950 shadow-2xl relative min-h-[420px] max-h-[520px]">
                       <iframe
                         title="Live Autonomous App Sandbox"
-                        srcDoc={executionResult.payload.livePreviewHtml}
-                        sandbox="allow-scripts allow-modals allow-same-origin allow-forms"
+                        srcDoc={buildSandboxedPreviewHtml(executionResult.payload.livePreviewHtml)}
+                        sandbox="allow-scripts allow-modals"
                         className="w-full h-[450px] border-none block"
                       />
                     </div>
