@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { WebSocketServer, WebSocket } from 'ws';
 import { decideActionExecutionRequest } from './src/services/ActionExecutionPolicy.ts';
+import { validateChatRequest } from './src/services/ChatRequestValidation.ts';
 
 dotenv.config();
 
@@ -40,15 +41,20 @@ const getAIClient = (req?: express.Request) => {
 // -------------------------------------------------------------
 app.post('/api/chat', async (req, res) => {
   try {
+    const validation = validateChatRequest(req.body);
+    if (!validation.success) {
+      return res.status(400).json({ success: false, error: validation.error });
+    }
+
     const {
-      messages = [],
-      personality = 'GirlFriend',
-      personalitySettings = {},
-      userLanguage = 'Bengali',
-      userName = 'User',
-      memories = [],
-      model = 'gemini-3.5-flash',
-    } = req.body;
+      messages,
+      personality,
+      personalitySettings,
+      userLanguage,
+      userName,
+      memories,
+      model,
+    } = validation.data;
 
     const ai = getAIClient(req);
     const warmth = personalitySettings.warmth ?? 90;
