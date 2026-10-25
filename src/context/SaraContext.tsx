@@ -21,6 +21,7 @@ import { planAutomationExecution } from '../services/AutomationExecutionPlan';
 import { validateStoredAutomations } from '../services/AutomationStorageValidation';
 import { validateStoredChatHistory } from '../services/ChatHistoryValidation';
 import { validateStoredMemories, validateStoredMemory } from '../services/MemoryStorageValidation';
+import { validateStoredEquippedAccessory, validateStoredEquippedOutfit, validateStoredUnlockedAccessories, validateStoredUnlockedOutfits } from '../services/WardrobeStorageValidation';
 import { DEFAULT_PERSONALITY_SETTINGS, DEFAULT_USER_PROFILE, DEFAULT_VOICE_SETTINGS, normalizePersonalitySettings, normalizeUserProfile, normalizeVoiceSettings } from '../services/PreferencesStorageValidation';
 
 interface SaraContextType {
@@ -838,20 +839,18 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => clearInterval(timer);
   }, []);
 
-  // Wardrobe state & methods
-  const [equippedOutfit, setEquippedOutfit] = useState<string>(() => {
-    return localStorage.getItem('sara_equipped_outfit') || 'cyber_jacket';
-  });
-  const [equippedAccessory, setEquippedAccessory] = useState<string>(() => {
-    return localStorage.getItem('sara_equipped_accessory') || 'none';
-  });
+  // Wardrobe state & methods. Restore inventory first so equipped IDs can be checked against it.
   const [unlockedOutfits, setUnlockedOutfits] = useState<string[]>(() => {
-    const saved = localStorage.getItem('sara_unlocked_outfits');
-    return saved ? JSON.parse(saved) : ['cyber_jacket', 'casual_hoodie'];
+    return validateStoredUnlockedOutfits(localStorage.getItem('sara_unlocked_outfits'));
   });
   const [unlockedAccessories, setUnlockedAccessories] = useState<string[]>(() => {
-    const saved = localStorage.getItem('sara_unlocked_accessories');
-    return saved ? JSON.parse(saved) : ['none', 'necklace'];
+    return validateStoredUnlockedAccessories(localStorage.getItem('sara_unlocked_accessories'));
+  });
+  const [equippedOutfit, setEquippedOutfit] = useState<string>(() => {
+    return validateStoredEquippedOutfit(localStorage.getItem('sara_equipped_outfit'), unlockedOutfits);
+  });
+  const [equippedAccessory, setEquippedAccessory] = useState<string>(() => {
+    return validateStoredEquippedAccessory(localStorage.getItem('sara_equipped_accessory'), unlockedAccessories);
   });
 
   useEffect(() => {
