@@ -57,7 +57,11 @@ export const AIAgentHubView: React.FC = () => {
   // Dynamic Movie Search State
   const [movieQuery, setMovieQuery] = useState<string>('তুফান');
   const [isSearchingMovie, setIsSearchingMovie] = useState<boolean>(false);
-  const [selectedMovieResult, setSelectedMovieResult] = useState<any>(AIAgentService.FEATURED_MOVIES['তুফান']);
+  const [selectedMovieResult, setSelectedMovieResult] = useState<any>({
+    title: AIAgentService.FEATURED_MOVIES['তুফান'].title,
+    summary: 'এখানে নির্দিষ্ট ভিডিওর metadata যাচাই করা হয় না। YouTube-এ সার্চ রেজাল্ট খুলে ভিডিওটি নিজে নির্বাচন করুন।',
+    searchUrl: 'https://www.youtube.com/results?search_query=Toofan%20official%20trailer',
+  });
   const [isListeningMovie, setIsListeningMovie] = useState<boolean>(false);
 
   // Facebook Comment State
@@ -129,15 +133,12 @@ export const AIAgentHubView: React.FC = () => {
       setExecutionResult(result);
       speakText(result.message, 'romantic');
 
-      // If it was a movie search command, update the movie player card as well!
-      if (result.type === 'youtube_movie' && result.payload?.movieTitle) {
+      // A search link is the only verified output; video metadata/IDs are not synthesized.
+      if (result.type === 'youtube_movie' && result.payload?.searchUrl) {
         setSelectedMovieResult({
-          title: result.payload.movieTitle,
-          year: result.payload.movieYear || '২০২৪',
-          genre: result.payload.movieGenre || 'Action, Drama',
-          rating: result.payload.movieRating || '৮.৩/১০',
-          summary: result.payload.movieSummary || `ইউটিউবে "${result.payload.movieTitle}" চলচ্চিত্রের ফুল রেজাল্ট।`,
-          youtubeId: result.payload.youtubeEmbedId || '3U3fC4w0U3U',
+          title: result.payload.movieTitle || movieQuery,
+          summary: result.message,
+          searchUrl: result.payload.searchUrl,
         });
       }
 
@@ -162,36 +163,24 @@ export const AIAgentHubView: React.FC = () => {
     }
   };
 
-  // Dynamic Movie Search Handler
-  const handleMovieSearch = async (title: string) => {
+  // Build a real YouTube search URL without inventing a video ID or metadata.
+  const handleMovieSearch = (title: string) => {
     const movieName = title.trim();
     if (!movieName) return;
 
     setMovieQuery(movieName);
     setIsSearchingMovie(true);
-    speakText(`বাবু, ইউটিউবে "${movieName}" মুভিটি খুঁজে নিয়ে আসছি ❤️`, 'happy');
-
-    // Check if known or generate dynamic preview
     const known = AIAgentService.FEATURED_MOVIES[movieName];
-    if (known) {
-      setSelectedMovieResult(known);
-      setIsSearchingMovie(false);
-      speakText(`"${movieName}" মুভিটি পেয়েছি সোনা! নিচে ট্রেইলার ও ফুল রেজাল্ট দেখে নাও 🥰`, 'romantic');
-    } else {
-      // Dynamic YouTube Movie Synthesis
-      setTimeout(() => {
-        setSelectedMovieResult({
-          title: `${movieName} (Full Movie / Trailer)`,
-          year: '২০২৪',
-          genre: 'Action, Romance, Drama',
-          rating: '৮.১/১০',
-          summary: `ইউটিউব থেকে সংগৃহীত "${movieName}" চলচ্চিত্রের অফিশিয়াল ফুল এইচডি স্ট্রিম ও ট্রেইলার।`,
-          youtubeId: '3U3fC4w0U3U', // Safe fallback playable video
-        });
-        setIsSearchingMovie(false);
-        speakText(`"${movieName}" মুভির ভিডিও রেজাল্ট স্ক্রিনে প্রস্তুত বাবু! ❤️`, 'romantic');
-      }, 700);
-    }
+    const searchTitle = known?.title || movieName;
+    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(`${searchTitle} official trailer`)}`;
+
+    setSelectedMovieResult({
+      title: searchTitle,
+      summary: 'এটি YouTube search results-এর লিংক। নির্দিষ্ট ভিডিও, রেটিং বা availability এই অ্যাপ যাচাই করেনি।',
+      searchUrl,
+    });
+    setIsSearchingMovie(false);
+    speakText(`বাবু, "${searchTitle}"-এর YouTube search link তৈরি হয়েছে। লিংক খুলে আসল ফলাফল দেখে নাও ❤️`, 'happy');
   };
 
   // Speech Recognition for Movie Search ("আমি মুভির নাম বলবো ও মুভি সার্চ দিবে")
@@ -700,47 +689,36 @@ export const AIAgentHubView: React.FC = () => {
           ))}
         </div>
 
-        {/* Selected Movie Visual Card */}
+        {/* Search link only: do not embed an unverified/fallback video ID. */}
         {selectedMovieResult && (
           <div className="p-3.5 sm:p-4 rounded-2xl bg-black/60 border border-slate-800 space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h4 className="text-sm sm:text-base font-extrabold text-white flex flex-wrap items-center gap-2">
-                  <span>{selectedMovieResult.title}</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-red-950 border border-red-500/40 text-red-300 font-mono">
-                    {selectedMovieResult.year}
-                  </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-amber-950 border border-amber-500/40 text-amber-300 font-mono">
-                    ⭐ {selectedMovieResult.rating}
-                  </span>
+                <h4 className="text-sm sm:text-base font-extrabold text-white">
+                  {selectedMovieResult.title}
                 </h4>
-                <p className="text-[11px] text-slate-400 mt-0.5">{selectedMovieResult.genre}</p>
+                <p className="text-[11px] text-slate-400 mt-1">YouTube search results · video details not verified</p>
               </div>
-
-              {/* Safe Open on YouTube (Zero black screen: opened in verified clean new tab) */}
               <a
-                href={`https://www.youtube.com/results?search_query=${encodeURIComponent((selectedMovieResult.title || movieQuery) + ' full movie bengali hd')}`}
+                href={selectedMovieResult.searchUrl || 'https://www.youtube.com/'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(239,68,68,0.5)] active:scale-95 transition-all self-start sm:self-auto shrink-0"
+                className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all self-start sm:self-auto shrink-0"
               >
                 <Play className="w-3.5 h-3.5 fill-current" />
-                <span>ইউটিউবে খুলুন</span>
+                <span>YouTube-এ সার্চ খুলুন</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed">{selectedMovieResult.summary}</p>
 
-            {/* Embedded YouTube Player Preview (Zero Black Screen Guaranteed) */}
-            <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 shadow-inner">
-              <iframe
-                src={`https://www.youtube.com/embed/${selectedMovieResult.youtubeId}?autoplay=0&rel=0`}
-                title={selectedMovieResult.title}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="w-full h-full border-0"
-              />
+            <div className="w-full rounded-2xl border border-slate-800 bg-slate-900/70 p-5 flex flex-col items-center justify-center text-center gap-2">
+              <Film className="w-8 h-8 text-red-400" />
+              <p className="text-sm font-semibold text-slate-200">ভিডিওটি YouTube-এ নির্বাচন করুন</p>
+              <p className="text-xs text-slate-400 max-w-md">
+                এই অ্যাপ কোনো নির্দিষ্ট ভিডিও ID, rating, বা full-movie availability অনুমান করে embed করবে না।
+              </p>
             </div>
           </div>
         )}
