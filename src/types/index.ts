@@ -68,7 +68,7 @@ export interface ActionProposal {
   title: string;
   risk: 'low' | 'medium' | 'high';
   details: Record<string, any>;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXECUTED';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXECUTED' | 'FAILED';
   executedAt?: string;
   resultMessage?: string;
 }
