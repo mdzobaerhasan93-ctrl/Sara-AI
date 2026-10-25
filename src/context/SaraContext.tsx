@@ -16,6 +16,7 @@ import {
 } from '../types';
 import { alarmAudio, checkScheduleMatch } from '../utils/alarmSound';
 import { AppInventoryService, AppDefinition, InAppAction } from '../services/AppInventoryService';
+import { decideWardrobePurchase } from '../services/WardrobeInventory';
 import { AIAgentService } from '../services/AIAgentService';
 import { planAutomationExecution } from '../services/AutomationExecutionPlan';
 import { validateStoredAutomations } from '../services/AutomationStorageValidation';
@@ -112,7 +113,7 @@ interface SaraContextType {
   unlockedAccessories: string[];
   equipOutfit: (id: string) => boolean;
   equipAccessory: (id: string) => boolean;
-  buyWardrobeItem: (id: string, type: 'outfit' | 'accessory', cost: number) => boolean;
+  buyWardrobeItem: (id: string, type: 'outfit' | 'accessory') => boolean;
 
   // Gestures
   gestureMappings: Record<string, string>;
@@ -879,35 +880,37 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return false;
   };
 
-  const buyWardrobeItem = (id: string, type: 'outfit' | 'accessory', cost: number) => {
-    if (coinBalance >= cost) {
-      setCoinBalance((prev) => prev - cost);
-      if (type === 'outfit') {
-        setUnlockedOutfits((prev) => [...prev, id]);
-        setEquippedOutfit(id);
-      } else {
-        setUnlockedAccessories((prev) => [...prev, id]);
-        setEquippedAccessory(id);
-      }
-      setCoinTransactions((prev) => [
-        {
-          id: `tx_${Date.now()}`,
-          title: `Purchased Wardrobe item: ${id}`,
-          amount: -cost,
-          type: 'pass_purchase',
-          timestamp: 'Just now',
-        },
-        ...prev,
-      ]);
-      addActivityLog({
-        title: `Purchased ${type}: ${id} (-${cost} coins)`,
-        type: 'reward',
-        service: 'Wardrobe Store',
-        status: 'SUCCESS',
-      });
-      return true;
+  const buyWardrobeItem = (id: string, type: 'outfit' | 'accessory') => {
+    const unlockedIds = type === 'outfit' ? unlockedOutfits : unlockedAccessories;
+    const decision = decideWardrobePurchase(id, type, coinBalance, unlockedIds);
+    if (!decision.allowed) return false;
+
+    const { item, cost } = decision;
+    setCoinBalance((prev) => prev - cost);
+    if (item.type === 'outfit') {
+      setUnlockedOutfits((prev) => prev.includes(item.id) ? prev : [...prev, item.id]);
+      setEquippedOutfit(item.id);
+    } else {
+      setUnlockedAccessories((prev) => prev.includes(item.id) ? prev : [...prev, item.id]);
+      setEquippedAccessory(item.id);
     }
-    return false;
+    setCoinTransactions((prev) => [
+      {
+        id: `tx_${Date.now()}`,
+        title: `Purchased Wardrobe item: ${item.name}`,
+        amount: -cost,
+        type: 'pass_purchase',
+        timestamp: 'Just now',
+      },
+      ...prev,
+    ]);
+    addActivityLog({
+      title: `Purchased ${item.type}: ${item.id} (-${cost} coins)`,
+      type: 'reward',
+      service: 'Wardrobe Store',
+      status: 'SUCCESS',
+    });
+    return true;
   };
 
   // Gesture Mappings
