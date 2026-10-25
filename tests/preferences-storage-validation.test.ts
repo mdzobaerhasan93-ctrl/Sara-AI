@@ -144,5 +144,5 @@ assert.equal(validVoice.pitch, 1.29);
 assert.equal(validVoice.autoSpeak, false);
 assert.equal(validVoice.provider, 'browser');
 
-assert.equal(normalizeVoiceSettings([] as unknown as object), DEFAULT_VOICE_SETTINGS);
+assert.deepEqual(normalizeVoiceSettings([] as unknown as object), DEFAULT_VOICE_SETTINGS);
 console.log('User profile, personality, and voice settings validation checks passed.');
