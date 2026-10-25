@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Lock,
   Cpu,
   Wifi,
   Sparkles,
