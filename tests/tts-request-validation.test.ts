@@ -31,7 +31,7 @@ const invalidInputs: unknown[] = [
   { text: 123 },
   { text: '' },
   { text: '   ' },
-  { text: 'x'.repeat(2001) },
+  { text: 'x'.repeat(401) },
   { text: 'hello\u0000hidden' },
   { text: '😀✨🔥' },
   { text: '```js\nconst x = 1;\n```' },
@@ -50,9 +50,9 @@ for (const input of invalidInputs) {
   );
 }
 
-const maxSize = validateTTSRequest({ text: 'x'.repeat(2000) });
+const maxSize = validateTTSRequest({ text: 'x'.repeat(400) });
 assert.equal(maxSize.success, true, 'The configured maximum text size should be accepted');
-if (maxSize.success) assert.equal(maxSize.data.text.length, 2000);
+if (maxSize.success) assert.equal(maxSize.data.text.length, 400);
 
 const emptyAfterFormatting = validateTTSRequest({ text: '[EMOTION:happy] ```ts\nlet x = 2;\n```' });
 assert.equal(emptyAfterFormatting.success, false);
