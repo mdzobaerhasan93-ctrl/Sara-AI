@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Lock,
   Cpu,
-  Wifi,
   Sparkles,
   Heart,
   Mic,
@@ -48,6 +46,8 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
     updateUserProfile,
     assistantState,
     cpuPower,
+    networkConnected,
+    systemOperational,
     speakText,
     isSpeaking,
     activeAvatarId,
@@ -447,66 +447,58 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
         {/* 3 Metric Cards (Responsive: single-column on tiny mobile screens, 3-columns on normal screens) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5">
           {/* Metric 1: System Status */}
-          <div className="p-2.5 rounded-2xl glass-card border border-emerald-500/20 flex flex-col justify-between">
+          <div className="p-2.5 rounded-2xl glass-card border border-amber-500/20 flex flex-col justify-between">
             <div>
               <p className="text-[10px] text-slate-400 uppercase font-semibold">System Status</p>
               <div className="flex items-center gap-1 mt-0.5">
-                <Lock className="w-3 h-3 text-emerald-400" />
-                <span className="text-[11px] font-bold text-emerald-400 font-mono">OPERATIONAL</span>
+                <Activity className={`w-3 h-3 ${systemOperational === null ? 'text-amber-400' : systemOperational ? 'text-emerald-400' : 'text-rose-400'}`} />
+                <span className={`text-[11px] font-bold font-mono ${systemOperational === null ? 'text-amber-400' : systemOperational ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {systemOperational === null ? 'NOT MEASURED' : systemOperational ? 'OPERATIONAL' : 'ATTENTION NEEDED'}
+                </span>
               </div>
             </div>
-            {/* Green Heartbeat line */}
-            <div className="mt-2 h-4 w-full flex items-center">
-              <svg viewBox="0 0 100 24" className="w-full h-full text-emerald-400">
-                <path
-                  d="M 0 12 L 30 12 L 40 4 L 50 20 L 60 2 L 70 18 L 80 12 L 100 12"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
+            <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
+              {systemOperational === null
+                ? 'Native system-health telemetry is not connected.'
+                : 'Reported by the connected telemetry source.'}
+            </p>
           </div>
 
-          {/* Metric 2: CPU Power */}
+          {/* Metric 2: CPU telemetry */}
           <div className="p-2.5 rounded-2xl glass-card border border-cyan-500/20 flex flex-col justify-between">
             <div>
-              <p className="text-[10px] text-slate-400 uppercase font-semibold">CPU Power</p>
-              <p className="text-base font-extrabold text-cyan-400 font-mono mt-0.5">
-                {cpuPower}%
+              <p className="text-[10px] text-slate-400 uppercase font-semibold">CPU Usage</p>
+              <p className={`text-base font-extrabold font-mono mt-0.5 ${cpuPower === null ? 'text-slate-400' : 'text-cyan-400'}`}>
+                {cpuPower === null ? 'UNAVAILABLE' : `${cpuPower}%`}
               </p>
             </div>
-            {/* Blue glowing bar */}
             <div className="mt-2 w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-              <div
-                className="bg-gradient-to-r from-cyan-400 to-blue-500 h-full rounded-full shadow-[0_0_8px_#00f2fe]"
-                style={{ width: `${cpuPower}%` }}
-              />
+              {cpuPower !== null && (
+                <div
+                  className="bg-gradient-to-r from-cyan-400 to-blue-500 h-full rounded-full shadow-[0_0_8px_#00f2fe]"
+                  style={{ width: `${cpuPower}%` }}
+                />
+              )}
             </div>
+            {cpuPower === null && <p className="mt-1 text-[10px] text-slate-500">Browser mode cannot read host CPU usage.</p>}
           </div>
 
-          {/* Metric 3: Network */}
-          <div className="p-2.5 rounded-2xl glass-card border border-emerald-500/20 flex flex-col justify-between">
+          {/* Metric 3: Network status */}
+          <div className="p-2.5 rounded-2xl glass-card border border-amber-500/20 flex flex-col justify-between">
             <div>
               <p className="text-[10px] text-slate-400 uppercase font-semibold">Network</p>
               <div className="flex items-center gap-1 mt-0.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[11px] font-bold text-emerald-400 font-mono">CONNECTED</span>
+                <span className={`w-2 h-2 rounded-full ${networkConnected === null ? 'bg-amber-400' : networkConnected ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                <span className={`text-[11px] font-bold font-mono ${networkConnected === null ? 'text-amber-400' : networkConnected ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {networkConnected === null ? 'NOT CHECKED' : networkConnected ? 'ONLINE' : 'OFFLINE'}
+                </span>
               </div>
             </div>
-            {/* Green Waveform */}
-            <div className="mt-2 h-4 w-full flex items-center">
-              <svg viewBox="0 0 100 24" className="w-full h-full text-emerald-400">
-                <path
-                  d="M 0 12 Q 15 2 30 12 T 60 12 T 90 12 L 100 12"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
+            <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
+              {networkConnected === null
+                ? 'Reachability has not been tested by the app.'
+                : 'Reported by the connected network-status source.'}
+            </p>
           </div>
         </div>
       </div>
