@@ -1,3 +1,5 @@
+import { resolveAppLaunchTarget } from './AppLaunchTarget';
+
 export interface InAppAction {
   id: string;
   name: string;
@@ -464,45 +466,40 @@ export class AppInventoryService {
     return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
   }
 
-  // Launch target app safely without opening black/blank tabs
+  // Resolve and validate persisted app launch targets before opening them.
+  // A true return means a launch attempt was dispatched, not that the external app opened.
   static launchAppSafely(app: AppDefinition, onFallbackNotice?: (msg: string) => void): boolean {
     if (typeof window === 'undefined') return false;
 
-    const isMobile = this.isMobileDevice();
+    const target = resolveAppLaunchTarget(app, this.isMobileDevice());
 
-    // 1. If on Desktop:
-    // Mobile URI schemes (e.g. instagram://, fb://, etc.) don't exist on desktop and cause browser to open a blank black tab!
-    // Therefore, always open the official webFallbackUrl on desktop!
-    if (!isMobile) {
-      const targetUrl = app.webFallbackUrl || (app.launchUri?.startsWith('http') ? app.launchUri : `https://www.google.com/search?q=${encodeURIComponent(app.name)}`);
-      window.open(targetUrl, '_blank', 'noopener,noreferrer');
-      return true;
+    if (target.kind === 'search') {
+      onFallbackNotice?.('No safe launch URL was configured. Opening a web search instead.');
     }
 
-    // 2. If on Mobile:
-    // If it's a standard web URL, open in a new tab safely
-    if (app.launchUri?.startsWith('http')) {
-      window.open(app.launchUri, '_blank', 'noopener,noreferrer');
-      return true;
-    }
-
-    // If it's a mobile URI scheme (e.g. instagram://, fb://, whatsapp://, etc.):
-    // Dispatch via anchor click without replacing current app or creating an orphaned about:blank tab:
-    try {
-      const a = document.createElement('a');
-      a.href = app.launchUri;
-      a.rel = 'noopener noreferrer';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      return true;
-    } catch (e) {
-      if (app.webFallbackUrl) {
-        window.open(app.webFallbackUrl, '_blank', 'noopener,noreferrer');
-        return true;
+    if (target.kind === 'web' || target.kind === 'search') {
+      const opened = window.open(target.url, '_blank', 'noopener,noreferrer');
+      if (!opened) {
+        onFallbackNotice?.('The browser blocked the new tab. Allow pop-ups or open the URL manually.');
+        return false;
       }
+      return true;
     }
-    return false;
+
+    try {
+      const anchor = document.createElement('a');
+      anchor.href = target.url;
+      anchor.rel = 'noopener noreferrer';
+      anchor.target = '_blank';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      onFallbackNotice?.('Launch request was sent to the device. The browser cannot confirm whether the external app opened.');
+      return true;
+    } catch {
+      onFallbackNotice?.('The app launch request could not be dispatched. No fallback destination was opened automatically.');
+      return false;
+    }
   }
 }
 
