@@ -16,6 +16,7 @@ import {
 } from '../types';
 import { alarmAudio, checkScheduleMatch } from '../utils/alarmSound';
 import { AppInventoryService, AppDefinition, InAppAction } from '../services/AppInventoryService';
+import { dispatchDirectAppAction, extractExplicitActionPayload } from '../services/DirectAppExecution';
 import { AIAgentService } from '../services/AIAgentService';
 import { planAutomationExecution } from '../services/AutomationExecutionPlan';
 import { validateStoredAutomations } from '../services/AutomationStorageValidation';
@@ -1030,96 +1031,167 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     }
 
-    // 2. AI Agent Command Handling (Movie search on YouTube, Facebook comments, etc.)
+    // 2. AI Agent Command Handling. A response is a result/draft, not proof of an external side effect.
     if (AIAgentService.isAgentCommand(command)) {
-      speakText('হ্যাঁ সোনা! আমি নির্দেশ পেয়েছি, কাজটি সম্পন্ন করছি ❤️', 'excited');
-      AIAgentService.executeCommand(command).then((res) => {
-        speakText(res.message, 'romantic');
+      speakText('হ্যাঁ সোনা! নির্দেশটি যাচাই করছি ❤️', 'excited');
+      void AIAgentService.executeCommand(command).then((res) => {
+        const reply = `${res.message}${res.payload?.searchUrl ? `\n\n🎬 [ইউটিউবে সার্চ রেজাল্ট খুলুন](${res.payload.searchUrl})` : ''}`;
+        speakText(res.message, res.success ? 'romantic' : 'caring');
         addMessage({
           role: 'model',
-          content: `${res.message}${res.payload?.searchUrl ? `\n\n🎬 [ইউটিউবে সরাসরি মুভি দেখতে এখানে ট্যাপ করুন](${res.payload.searchUrl})` : ''}`,
-          emotion: 'excited',
+          content: reply,
+          emotion: res.success ? 'excited' : 'caring',
         });
         addActivityLog({
-          title: `Voice Task: ${res.bengaliTitle}`,
+          title: `${res.success ? 'Voice task result' : 'Voice task not completed'}: ${res.bengaliTitle}`,
           type: 'action',
           service: 'AI Voice Agent',
-          status: 'SUCCESS',
+          status: res.success ? 'SUCCESS' : 'FAILED',
           details: res.message,
+        });
+      }).catch((error) => {
+        const failureMessage = 'বাবু, voice agent কাজটি সম্পন্ন করতে পারেনি। কোনো external action সফল হয়েছে বলে নিশ্চিত করা যাচ্ছে না।';
+        speakText(failureMessage, 'caring');
+        addMessage({
+          role: 'model',
+          content: failureMessage,
+          emotion: 'caring',
+        });
+        addActivityLog({
+          title: 'Voice task failed',
+          type: 'action',
+          service: 'AI Voice Agent',
+          status: 'FAILED',
+          details: error instanceof Error ? error.message.slice(0, 300) : 'Unknown agent error',
         });
       });
       return true;
     }
 
-    // 3. Deep In-App Automation Parsing (e.g. "ইনস্টাগ্রাম ওপেন করে রিলসে কমেন্ট করো")
+    // 3. Deep In-App Automation Parsing. External side effects require the
+    // native bridge and an explicit payload for actions that accept user text.
     const parsed = AppInventoryService.parseCommand(command);
     if (parsed.app) {
       const app = parsed.app;
       const action = parsed.action;
 
       if (action) {
-        speakText(`${app.bengaliName} অ্যাপের ভেতরে ঢুকে ${action.bengaliName} সম্পন্ন করছি বাবু! ❤️`, 'excited');
-
-        // Launch target app safely via URI or web fallback without orphaned blank tabs
-        try {
-          AppInventoryService.launchAppSafely(app);
-        } catch (e) {}
-
-        // Native Android Accessibility hook if running in native app
-        if (typeof window !== 'undefined' && (window as any).AndroidBridge?.performAccessibilityAction) {
-          try {
-            (window as any).AndroidBridge.performAccessibilityAction(app.packageName, action.id, parsed.payload || '');
-          } catch (err) {}
+        const explicitPayload = extractExplicitActionPayload(command);
+        if (action.requiresInput && !explicitPayload) {
+          const message = `বাবু, ${app.bengaliName}-এর "${action.bengaliName}" কাজের জন্য স্পষ্ট message/comment/caption text দরকার। কোনো content বানিয়ে বা পাঠিয়ে দেওয়া হয়নি; Direct App Controller-এ text লিখে আবার চেষ্টা করো।`;
+          speakText(message, 'caring');
+          addMessage({
+            role: 'model',
+            content: message,
+            emotion: 'caring',
+          });
+          addActivityLog({
+            title: `In-app action not executed: ${app.name} -> ${action.name}`,
+            type: 'action',
+            service: 'Screen Control',
+            status: 'FAILED',
+            details: `The action requires explicit user text, but none was extracted. No app action was dispatched.`,
+          });
+          return true;
         }
 
-        addActivityLog({
-          title: `In-App Control: ${app.name} -> ${action.name}`,
-          type: 'action',
-          service: 'Android Accessibility Bridge',
-          status: 'SUCCESS',
-          details: `Executed in-app action: ${action.bengaliName} (${action.name})`,
+        const bridge = typeof window !== 'undefined' ? (window as any).AndroidBridge : undefined;
+        if (!bridge || typeof bridge.performAccessibilityAction !== 'function') {
+          const launchAttempted = AppInventoryService.launchAppSafely(app);
+          const message = launchAttempted
+            ? `বাবু, ${app.bengaliName} খোলার request পাঠানো হয়েছে, কিন্তু native accessibility bridge নেই। তাই "${action.bengaliName}" action চালানো হয়নি; target app-এ গিয়ে নিজে যাচাই করে কাজটি শেষ করো।`
+            : `বাবু, ${app.bengaliName}-এ action চালানো যায়নি, কারণ native accessibility bridge নেই। কোনো comment/message/post পাঠানো হয়নি।`;
+          speakText(message, 'caring');
+          addMessage({
+            role: 'model',
+            content: message,
+            emotion: 'caring',
+          });
+          addActivityLog({
+            title: `In-app action not executed: ${app.name} -> ${action.name}`,
+            type: 'action',
+            service: 'Android Accessibility Bridge',
+            status: 'FAILED',
+            details: `Native bridge unavailable. App launch attempted: ${launchAttempted}. Requested action was not executed.`,
+          });
+          return true;
+        }
+
+        const dispatchPayload = explicitPayload || '';
+        speakText(`${app.bengaliName}-এর "${action.bengaliName}" action-এর request পাঠাচ্ছি। completion confirm হলে জানাব।`, 'caring');
+        void dispatchDirectAppAction(bridge, {
+          packageName: app.packageName,
+          actionId: action.id,
+          payload: dispatchPayload,
+        }).then((result) => {
+          const completed = result.status === 'SUCCESS';
+          const statusMessage = completed
+            ? `বাবু, ${app.bengaliName}-এর "${action.bengaliName}" কাজটি native bridge থেকে সম্পন্ন হওয়ার confirmation পেয়েছি।`
+            : result.status === 'PENDING'
+              ? `বাবু, ${app.bengaliName}-এ action request পাঠানো হয়েছে, কিন্তু completion verify করা যায়নি। app খুলে নিজে check করো।`
+              : `বাবু, ${app.bengaliName}-এ action চালানো যায়নি। ${result.message}`;
+
+          speakText(statusMessage, completed ? 'happy' : 'caring');
+          addMessage({
+            role: 'model',
+            content: statusMessage,
+            emotion: completed ? 'happy' : 'caring',
+          });
+          addActivityLog({
+            title: `${completed ? 'In-app action completed' : result.status === 'PENDING' ? 'In-app action pending' : 'In-app action failed'}: ${app.name} -> ${action.name}`,
+            type: 'action',
+            service: 'Android Accessibility Bridge',
+            status: result.status,
+            details: `${result.message} Action ID: ${action.id}. Message content was not stored in this log.`,
+          });
+        }).catch(() => {
+          const failure = `বাবু, ${app.bengaliName}-এ action dispatch করতে error হয়েছে। completion confirm হয়নি।`;
+          speakText(failure, 'caring');
+          addMessage({ role: 'model', content: failure, emotion: 'caring' });
+          addActivityLog({
+            title: `In-app action failed: ${app.name} -> ${action.name}`,
+            type: 'action',
+            service: 'Android Accessibility Bridge',
+            status: 'FAILED',
+            details: `Unexpected dispatcher error for action ID ${action.id}; no completion was confirmed.`,
+          });
         });
-
-        setTimeout(() => {
-          speakText(`সোনা, ${app.bengaliName}-এ গিয়ে তোমার নির্দেশ মতো কাজ সফলভাবে কমপ্লিট করেছি! 🥰`, 'romantic');
-        }, 1200);
-
         return true;
       }
 
-      // If only app matched without specific action, open the app
-      speakText(`${app.bengaliName} ওপেন করে দেওয়া হচ্ছে সোনা! ✨`, 'happy');
-      try {
-        AppInventoryService.launchAppSafely(app);
-      } catch (e) {}
-
+      const launchAttempted = AppInventoryService.launchAppSafely(app);
+      const message = launchAttempted
+        ? `${app.bengaliName}-এ launch request পাঠানো হয়েছে। browser থেকে external app খোলা হয়েছে কি না নিশ্চিত করা যায় না।`
+        : `${app.bengaliName}-এ launch request পাঠানো যায়নি বা browser তা confirm করেনি।`;
+      speakText(message, launchAttempted ? 'caring' : 'caring');
       addActivityLog({
-        title: `Screen Control: Opened ${app.name}`,
+        title: `Screen control ${launchAttempted ? 'launch pending' : 'launch failed'}: ${app.name}`,
         type: 'action',
         service: 'Device Screen Control',
-        status: 'SUCCESS',
-        details: `Launched ${app.packageName}`,
+        status: launchAttempted ? 'PENDING' : 'FAILED',
+        details: message,
       });
       return true;
     }
 
-    // 4. Fallback check for "Open [App]" or "ওপেন [App]" pattern
+    // 4. Fallback check for "Open [App]" or "ওপেন [App]" pattern.
     const openMatch = q.match(/(open|ওপেন|খুলো|চালাও|চালু)\s+(.+)/);
     if (openMatch) {
       const appName = openMatch[2].trim();
       const app = AppInventoryService.getAppByName(appName);
 
       if (app) {
-        speakText(`${app.bengaliName || app.name} ওপেন করা হচ্ছে সোনা! ✨`, 'happy');
-        try {
-          AppInventoryService.launchAppSafely(app);
-        } catch (e) {}
-
+        const launchAttempted = AppInventoryService.launchAppSafely(app);
+        const message = launchAttempted
+          ? `${app.bengaliName || app.name}-এ launch request পাঠানো হয়েছে। external app খোলা হয়েছে কি না browser থেকে নিশ্চিত করা যায় না।`
+          : `${app.bengaliName || app.name}-এ launch request পাঠানো যায়নি বা browser তা confirm করেনি।`;
+        speakText(message, 'caring');
         addActivityLog({
-          title: `Screen Control: Opened ${app.name}`,
+          title: `Screen control ${launchAttempted ? 'launch pending' : 'launch failed'}: ${app.name}`,
           type: 'action',
           service: 'Device Screen Control',
-          status: 'SUCCESS',
+          status: launchAttempted ? 'PENDING' : 'FAILED',
+          details: message,
         });
         return true;
       }
