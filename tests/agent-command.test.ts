@@ -50,11 +50,19 @@ assert.equal(missingMovieTitle.success, false);
 assert.match(missingMovieTitle.message, /নামটা বলো/);
 assert.equal(missingMovieTitle.payload?.youtubeEmbedId, undefined);
 
-const whatsappDraft = await AIAgentService.executeCommand('WhatsApp মেসেজ পাঠাও');
+const whatsappNeedsText = await AIAgentService.executeCommand('WhatsApp মেসেজ পাঠাও');
+assert.equal(whatsappNeedsText.type, 'whatsapp_message');
+assert.equal(whatsappNeedsText.success, false);
+assert.equal(whatsappNeedsText.payload?.webFallbackUrl, undefined);
+assert.match(whatsappNeedsText.message, /কী বার্তা পাঠাতে চাও/);
+assert.ok(!whatsappNeedsText.message.includes('কেমন আছো সোনা'), 'The draft flow must not invent message content');
+
+const whatsappDraft = await AIAgentService.executeCommand('WhatsApp মেসেজ পাঠাও "আগামীকাল দেখা হবে"');
 assert.equal(whatsappDraft.type, 'whatsapp_message');
 assert.equal(whatsappDraft.success, true);
 assert.match(whatsappDraft.payload?.webFallbackUrl || '', /^https:\/\/wa\.me\/\?text=/);
 assert.match(whatsappDraft.message, /এখনো মেসেজ পাঠানো হয়নি/);
+assert.equal(whatsappDraft.payload?.messageText, 'আগামীকাল দেখা হবে');
 assert.ok(
   !whatsappDraft.message.includes('সফলভাবে প্রস্তুত ও পাঠানো হয়েছে'),
   'WhatsApp flow must not claim a message was sent',
