@@ -39,6 +39,8 @@ function cleanText(value: unknown, maxLength: number): string | null {
 function safeId(value: unknown): string | null {
   const id = cleanText(value, 160);
   if (!id || !/^[a-z0-9_.:-]+$/i.test(id)) return null;
+  const normalized = id.toLowerCase();
+  if (['__proto__', 'prototype', 'constructor'].includes(normalized)) return null;
   return id;
 }
 
