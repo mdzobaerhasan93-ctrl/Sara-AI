@@ -33,6 +33,23 @@ for (const message of ordinaryMessages) {
   );
 }
 
+const youtubeSearch = await AIAgentService.executeCommand('ইউটিউবে ইন্টারস্টেলার মুভি সার্চ দাও');
+assert.equal(youtubeSearch.type, 'youtube_movie');
+assert.equal(youtubeSearch.success, true);
+assert.match(youtubeSearch.payload?.searchUrl || '', /^https:\/\/www\.youtube\.com\/results\?search_query=/);
+assert.ok(youtubeSearch.payload?.searchUrl?.includes('official'));
+assert.equal(youtubeSearch.payload?.youtubeEmbedId, undefined, 'Search flow must not fabricate a video ID');
+assert.equal(youtubeSearch.payload?.movieRating, undefined, 'Search flow must not invent a movie rating');
+assert.equal(youtubeSearch.payload?.movieYear, undefined, 'Search flow must not invent a release year');
+assert.match(youtubeSearch.message, /যাচাই করে দেখাইনি/);
+assert.ok(!youtubeSearch.message.includes('সরাসরি প্লে করতে পারো'));
+
+const missingMovieTitle = await AIAgentService.executeCommand('YouTube open');
+assert.equal(missingMovieTitle.type, 'youtube_movie');
+assert.equal(missingMovieTitle.success, false);
+assert.match(missingMovieTitle.message, /নামটা বলো/);
+assert.equal(missingMovieTitle.payload?.youtubeEmbedId, undefined);
+
 const whatsappDraft = await AIAgentService.executeCommand('WhatsApp মেসেজ পাঠাও');
 assert.equal(whatsappDraft.type, 'whatsapp_message');
 assert.equal(whatsappDraft.success, true);
