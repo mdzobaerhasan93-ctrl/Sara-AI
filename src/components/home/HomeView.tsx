@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useSara } from '../../context/SaraContext';
 import { AICoreOrb } from '../core/AICoreOrb';
+import { isAndroidAccessibilityBridgeAvailable } from '../../services/DirectAppExecution';
 import { LiveTalkingAvatar } from '../avatar/LiveTalkingAvatar';
 import { TabType } from '../navigation/BottomNavigation';
 import { MoodHabitTracker } from './MoodHabitTracker';
@@ -67,6 +68,8 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
   const [showGestureModal, setShowGestureModal] = useState<boolean>(false);
   const [showAppControllerModal, setShowAppControllerModal] = useState<boolean>(false);
   const [runningAutoId, setRunningAutoId] = useState<string | null>(null);
+
+  const hasNativeAccessibilityBridge = typeof window !== 'undefined' && isAndroidAccessibilityBridgeAvailable((window as any).AndroidBridge);
 
   const handleRunAuto = async (id: string) => {
     try {
@@ -518,13 +521,13 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
             <div className="min-w-0">
               <h3 className="text-xs font-bold text-slate-100 tracking-wider uppercase flex items-center gap-1.5 flex-wrap">
                 <span>IN-APP CONTROLLER</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-mono font-bold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  ACCESSIBILITY DIRECT
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full border font-mono font-bold flex items-center gap-1 ${hasNativeAccessibilityBridge ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-rose-500/15 text-rose-300 border-rose-500/30'}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${hasNativeAccessibilityBridge ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`} />
+                  {hasNativeAccessibilityBridge ? 'NATIVE BRIDGE AVAILABLE' : 'BROWSER-ONLY MODE'}
                 </span>
               </h3>
               <p className="text-[10px] text-pink-300/90 truncate">
-                ইউজারের ফোনের অ্যাপসে সরাসরি ঢুকে অ্যাকশন ও কমেন্ট সম্পাদন
+                {hasNativeAccessibilityBridge ? 'Native bridge detected; action status will only be successful after confirmation.' : 'Native app control is unavailable in this browser session; no direct action can be executed.'}
               </p>
             </div>
           </div>

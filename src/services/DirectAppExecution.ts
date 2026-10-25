@@ -42,6 +42,11 @@ function isAndroidActionBridge(value: unknown): value is AndroidActionBridge {
     && typeof (value as { performAccessibilityAction?: unknown }).performAccessibilityAction === 'function';
 }
 
+/** Returns true only when the native accessibility dispatch method exists. */
+export function isAndroidAccessibilityBridgeAvailable(value: unknown): boolean {
+  return isAndroidActionBridge(value);
+}
+
 /**
  * Dispatches an action only through an installed native bridge.
  * A returned Promise or a lack of thrown errors does not prove that the device
