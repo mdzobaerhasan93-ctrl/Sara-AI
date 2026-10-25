@@ -79,60 +79,70 @@ export async function fetchCurrentWeather(
   url.searchParams.set('longitude', String(coordinates.longitude));
   url.searchParams.set('current', 'temperature_2m,relative_humidity_2m,weather_code');
 
+  let response: Response;
   try {
-    const response = await fetchImpl(url, {
+    response = await fetchImpl(url, {
       signal: AbortSignal.timeout(WEATHER_TIMEOUT_MS),
       headers: { Accept: 'application/json' },
     });
-
-    if (!response.ok) {
-      return {
-        success: false,
-        error: 'Weather provider returned an unsuccessful response.',
-      };
-    }
-
-    const data: unknown = await response.json();
-    if (!isRecord(data) || !isRecord(data.current)) {
-      return {
-        success: false,
-        error: 'Weather provider returned an incomplete response.',
-      };
-    }
-
-    const temperature = data.current.temperature_2m;
-    if (
-      typeof temperature !== 'number' ||
-      !Number.isFinite(temperature) ||
-      temperature < -100 ||
-      temperature > 70
-    ) {
-      return {
-        success: false,
-        error: 'Weather provider returned an invalid temperature.',
-      };
-    }
-
-    const result: CurrentWeather = {
-      success: true,
-      temp: Math.round(temperature),
-    };
-
-    const weatherCode = data.current.weather_code;
-    if (typeof weatherCode === 'number' && Number.isInteger(weatherCode) && weatherCode >= 0 && weatherCode <= 99) {
-      result.code = weatherCode;
-    }
-
-    const humidity = data.current.relative_humidity_2m;
-    if (typeof humidity === 'number' && Number.isFinite(humidity) && humidity >= 0 && humidity <= 100) {
-      result.humidity = humidity;
-    }
-
-    return result;
   } catch {
     return {
       success: false,
       error: 'Weather provider could not be reached. Please retry shortly.',
     };
   }
+
+  if (!response.ok) {
+    return {
+      success: false,
+      error: 'Weather provider returned an unsuccessful response.',
+    };
+  }
+
+  let data: unknown;
+  try {
+    data = await response.json();
+  } catch {
+    return {
+      success: false,
+      error: 'Weather provider returned an unreadable response.',
+    };
+  }
+
+  if (!isRecord(data) || !isRecord(data.current)) {
+    return {
+      success: false,
+      error: 'Weather provider returned an incomplete response.',
+    };
+  }
+
+  const temperature = data.current.temperature_2m;
+  if (
+    typeof temperature !== 'number' ||
+    !Number.isFinite(temperature) ||
+    temperature < -100 ||
+    temperature > 70
+  ) {
+    return {
+      success: false,
+      error: 'Weather provider returned an invalid temperature.',
+    };
+  }
+
+  const result: CurrentWeather = {
+    success: true,
+    temp: Math.round(temperature),
+  };
+
+  const weatherCode = data.current.weather_code;
+  if (typeof weatherCode === 'number' && Number.isInteger(weatherCode) && weatherCode >= 0 && weatherCode <= 99) {
+    result.code = weatherCode;
+  }
+
+  const humidity = data.current.relative_humidity_2m;
+  if (typeof humidity === 'number' && Number.isFinite(humidity) && humidity >= 0 && humidity <= 100) {
+    result.humidity = humidity;
+  }
+
+  return result;
 }
