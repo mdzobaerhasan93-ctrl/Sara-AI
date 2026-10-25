@@ -41,9 +41,11 @@ function safeText(value: unknown, limit: number, allowEmpty = false): string | n
     })
     .join('')
     .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, limit);
-  return normalized || allowEmpty ? normalized : null;
+    .trim();
+
+  if (normalized.length > limit) return null;
+  if (!normalized && !allowEmpty) return null;
+  return normalized;
 }
 
 function safeId(value: unknown): string | null {
