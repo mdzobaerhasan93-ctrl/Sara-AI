@@ -104,7 +104,9 @@ function boundedNumber(value: unknown, fallback: number, minimum: number, maximu
 function safeId(value: unknown, fallback: string): string {
   if (typeof value !== 'string') return fallback;
   const id = value.trim();
-  return /^[a-z0-9_-]{1,80}$/i.test(id) ? id : fallback;
+  if (!/^[a-z0-9_-]{1,80}$/i.test(id)) return fallback;
+  if (['__proto__', 'prototype', 'constructor'].includes(id.toLowerCase())) return fallback;
+  return id;
 }
 
 function safeEmail(value: unknown, fallback: string): string {
