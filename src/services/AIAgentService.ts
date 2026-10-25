@@ -1,4 +1,5 @@
 // SARA AI Agent Service. External actions remain drafts unless a real, verified integration exists.
+import { buildWhatsAppDraft } from './WhatsAppDraftService';
 import { normalizeAgentBuilderData } from './AgentBuilderValidation';
 
 export interface AgentActionStep {
@@ -256,36 +257,52 @@ export class AIAgentService {
     command: string,
     onStepUpdate?: (step: AgentActionStep) => void
   ): Promise<AgentExecutionResult> {
-    const defaultMsg = 'কেমন আছো সোনা? তোমার কথা খুব মনে পড়ছে, নিজের যত্ন নিও কিন্তু ❤️';
+    const draft = buildWhatsAppDraft(command);
+    const steps: AgentActionStep[] = draft.needsMessageText
+      ? [
+          {
+            title: 'Message Text Needed',
+            detail: 'বার্তার text স্পষ্টভাবে দেওয়া হয়নি; কিছুই draft বা send করা হয়নি।',
+            status: 'done',
+          },
+        ]
+      : [
+          {
+            title: 'Message Drafted',
+            detail: `User-specified text-এর draft তৈরি হয়েছে: "${draft.messageText}"`,
+            status: 'done',
+          },
+          {
+            title: 'Awaiting User Confirmation',
+            detail: 'বার্তা পাঠানো হয়নি। WhatsApp link খুলে প্রাপক ও text যাচাই করে নিজে Send করতে হবে।',
+            status: 'done',
+          },
+        ];
 
-    const whatsappDraftUrl = `https://wa.me/?text=${encodeURIComponent(defaultMsg)}`;
-    const steps: AgentActionStep[] = [
-      { title: 'WhatsApp Ready', detail: 'WhatsApp draft link তৈরি করা হচ্ছে...', status: 'running' },
-      { title: 'Recipient Not Selected', detail: 'কোনো প্রাপক নির্দিষ্ট করা হয়নি; WhatsApp-এ প্রাপক বেছে নাও।', status: 'pending' },
-      { title: 'Message Drafted', detail: `বার্তার খসড়া তৈরি: "${defaultMsg}"`, status: 'pending' },
-      { title: 'Awaiting User Send', detail: 'বার্তা পাঠানো হয়নি; WhatsApp-এ গিয়ে যাচাই করে নিজে Send করতে হবে।', status: 'pending' },
-    ];
-
-    for (let i = 0; i < steps.length; i++) {
-      steps[i].status = 'running';
-      steps[i].timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      if (onStepUpdate) onStepUpdate(steps[i]);
-      await new Promise((r) => setTimeout(r, 380));
-      steps[i].status = 'done';
+    for (const step of steps) {
+      step.timestamp = new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+      if (onStepUpdate) onStepUpdate(step);
     }
 
     return {
       id: `agent_wa_${Date.now()}`,
       type: 'whatsapp_message',
-      title: 'WhatsApp Message Dispatch',
-      bengaliTitle: 'হোয়াটসঅ্যাপ বার্তা প্রেরণ',
+      title: draft.needsMessageText ? 'WhatsApp Draft Needs Text' : 'WhatsApp Message Draft',
+      bengaliTitle: draft.needsMessageText ? 'বার্তার text প্রয়োজন' : 'হোয়াটসঅ্যাপ বার্তার খসড়া',
       targetApp: 'WhatsApp',
       steps,
-      success: true,
-      message: 'বাবু, তোমার WhatsApp বার্তার খসড়া তৈরি করেছি ❤️ এখনো মেসেজ পাঠানো হয়নি। নিচের লিংক খুলে প্রাপক বেছে নিয়ে বার্তাটি যাচাই করে নিজে Send করো।',
+      success: !draft.needsMessageText,
+      message: draft.needsMessageText
+        ? 'বাবু, কী বার্তা পাঠাতে চাও সেটি লিখে দাও—যেমন: WhatsApp message: আগামীকাল দেখা হবে। তোমার লেখা ছাড়া আমি কোনো বার্তা বানিয়ে দিচ্ছি না, আর কোনো message পাঠানোও হয়নি।'
+        : 'বাবু, তোমার দেওয়া text-এর WhatsApp draft link তৈরি করেছি ❤️ এখনো মেসেজ পাঠানো হয়নি। লিংক খুলে প্রাপক ও বার্তা যাচাই করে নিজে Send করো।',
       payload: {
-        messageText: defaultMsg,
-        webFallbackUrl: whatsappDraftUrl,
+        messageText: draft.messageText,
+        ...(draft.recipientPhone ? { recipientPhone: draft.recipientPhone } : {}),
+        ...(draft.webFallbackUrl ? { webFallbackUrl: draft.webFallbackUrl } : {}),
       },
     };
   }
