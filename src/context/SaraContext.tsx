@@ -17,6 +17,7 @@ import {
 import { alarmAudio, checkScheduleMatch } from '../utils/alarmSound';
 import { AppInventoryService, AppDefinition, InAppAction } from '../services/AppInventoryService';
 import { AIAgentService } from '../services/AIAgentService';
+import { planAutomationExecution } from '../services/AutomationExecutionPlan';
 
 interface SaraContextType {
   // Assistant Status
@@ -466,54 +467,45 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const auto = automations.find((a) => a.id === id);
     if (!auto) return;
 
-    try {
-      const res = await fetch('/api/think', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-gemini-api-key': localStorage.getItem('sara_custom_gemini_key') || '',
-        },
-        body: JSON.stringify({
-          prompt: `Execute automation task: "${auto.name}" with action "${auto.action}". Provide a sweet, caring Bengali AI response as Sara confirming or executing this task.`,
-          systemInstruction: 'You are Sara, a loving Bengali AI girlfriend. Give realistic, caring response in Bengali.',
-        }),
-      });
-      const data = await res.json();
-      let reply = `বাবু, "${auto.name}" অটোমেশনটি সফলভাবে কার্যকর করা হয়েছে ❤️`;
-      if (data.success && data.text) {
-        const cleanLines = data.text.split('\n').map((l: string) => l.trim()).filter((l: string) => l && !l.startsWith('#') && !l.startsWith('*'));
-        if (cleanLines.length > 0) {
-          reply = cleanLines[0].slice(0, 160);
-        }
-      }
-
-      setAutomations((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, lastRun: `Just now (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` } : a))
-      );
-
+    const plan = planAutomationExecution(auto.name, auto.action);
+    if (!plan.supported) {
+      const failureText = `বাবু, "${auto.name}" automation-টি চালানো হয়নি। ${plan.reason}`;
       addActivityLog({
-        title: `Automation Executed: ${auto.name}`,
+        title: `Automation not executed: ${auto.name}`,
         type: 'automation',
-        service: 'Real AI Automation',
-        status: 'SUCCESS',
-        details: auto.action,
+        service: 'Automation Runner',
+        status: 'FAILED',
+        details: `No action was executed. ${plan.reason} Configured action: ${auto.action}`,
       });
-
       addMessage({
         role: 'model',
-        content: `⚡ **${auto.name}**: ${reply}\n\n*অ্যাকশন বিবরণ:* ${auto.action}`,
-        emotion: 'excited',
+        content: `${failureText}\n\nএই action চালাতে verified executor বা service integration প্রয়োজন।`,
+        emotion: 'sad',
       });
-
-      speakText(reply, 'excited').catch(() => {});
-    } catch (err) {
-      console.error('Automation execution error:', err);
-      const fallbackReply = `বাবু, "${auto.name}" অটোমেশনটি সম্পন্ন করেছি ❤️`;
-      setAutomations((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, lastRun: `Just now (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` } : a))
-      );
-      speakText(fallbackReply, 'happy').catch(() => {});
+      speakText(failureText, 'sad').catch(() => {});
+      return;
     }
+
+    const timestamp = `Just now (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`;
+    setAutomations((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, lastRun: timestamp } : a))
+    );
+
+    addActivityLog({
+      title: `Local reminder displayed: ${auto.name}`,
+      type: 'automation',
+      service: 'In-app Reminder Runner',
+      status: 'SUCCESS',
+      details: plan.executionNote,
+    });
+
+    const confirmation = `${auto.name}\n${plan.reply}\n\nএটি app-এর ভেতরে দেখানো local reminder; কোনো external service call করা হয়নি।`;
+    addMessage({
+      role: 'model',
+      content: confirmation,
+      emotion: 'caring',
+    });
+    speakText(plan.reply, 'caring').catch(() => {});
   };
 
   // Ringing Alarm State
