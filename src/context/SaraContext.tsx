@@ -1477,21 +1477,22 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const agentRes = await AIAgentService.executeCommand(content);
           const reply = `${agentRes.message}${agentRes.payload?.searchUrl ? `\n\n🎬 [ইউটিউবে মুভি দেখতে এখানে সরাসরি ট্যাপ করুন](${agentRes.payload.searchUrl})` : ''}`;
           
+          const agentEmotion: EmotionState = agentRes.success ? 'excited' : 'caring';
           addMessage({
             role: 'model',
             content: reply,
-            emotion: 'excited',
+            emotion: agentEmotion,
           });
-          setCurrentEmotion('excited');
+          setCurrentEmotion(agentEmotion);
           setAssistantState('IDLE');
           if (voiceSettings.autoSpeak) {
-            speakText(agentRes.message, 'romantic');
+            speakText(agentRes.message, agentEmotion);
           }
           addActivityLog({
             title: `AI Agent: ${agentRes.bengaliTitle}`,
             type: 'action',
             service: 'Autonomous Agent Engine',
-            status: 'SUCCESS',
+            status: agentRes.success ? 'SUCCESS' : 'FAILED',
             details: agentRes.message,
           });
           setIsLoading(false);
