@@ -10,6 +10,7 @@ import { dispatchGitHubWorkflow } from './src/services/GitHubActionsService.ts';
 import { InMemoryRateLimiter } from './src/services/ApiRateLimit.ts';
 import { validateHighThinkingRequest } from './src/services/HighThinkingRequestValidation.ts';
 import { fetchCurrentWeather, validateWeatherCoordinates } from './src/services/WeatherService.ts';
+import { validateTTSRequest } from './src/services/TTSRequestValidation.ts';
 
 dotenv.config();
 
@@ -695,22 +696,20 @@ async function fetchGoogleTTSAudio(text: string, lang = 'bn'): Promise<string | 
 }
 
 app.post('/api/tts', rateLimitMiddleware('tts', apiRateLimiters.tts), async (req, res) => {
-  try {
-    const { text, voice = 'Zephyr', style } = req.body;
-    if (!text) {
-      return res.status(400).json({ success: false, error: 'Text is required for TTS.' });
-    }
+  const validation = validateTTSRequest(req.body);
+  if (!validation.success) {
+    return res.status(400).json({
+      success: false,
+      status: 'INVALID_TTS_REQUEST',
+      error: validation.error,
+    });
+  }
 
-    const cleanText = text
-      .replace(/\[EMOTION:[a-zA-Z]+\]\s*/g, '')
-      .replace(/```[\s\S]*?```/g, '')
-      .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1FA00}-\u{1FAFF}\u{FE00}-\u{FE0F}]/gu, '')
-      .replace(/[*#_`~]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
+  try {
+    const { text: cleanText, voice, style } = validation.data;
     const isBengali = /[\u0980-\u09FF]/.test(cleanText);
 
-    // 1. For Bengali, prioritize crystal-clear native Google Bengali TTS
+    // Prefer native Google Bengali TTS for Bengali text.
     if (isBengali) {
       const googleBengaliAudio = await fetchGoogleTTSAudio(cleanText, 'bn');
       if (googleBengaliAudio) {
@@ -723,7 +722,6 @@ app.post('/api/tts', rateLimitMiddleware('tts', apiRateLimiters.tts), async (req
       }
     }
 
-    // 2. Try Gemini 3.8 Flash TTS for non-Bengali or secondary
     const ai = getAIClient(req);
     try {
       const response = await ai.models.generateContent({
@@ -733,11 +731,11 @@ app.post('/api/tts', rateLimitMiddleware('tts', apiRateLimiters.tts), async (req
             role: 'user',
             parts: [
               {
-                text: cleanText.slice(0, 400),
+                text: cleanText,
                 speechMetadata: {
                   style: isBengali
                     ? 'Sweet, gentle native Bengali female voice speaking fluent, clear Bengali'
-                    : (style || 'Warm, loving, expressive female companion'),
+                    : style,
                 },
               },
             ],
@@ -747,14 +745,14 @@ app.post('/api/tts', rateLimitMiddleware('tts', apiRateLimiters.tts), async (req
           responseModalities: ['AUDIO'],
           speechConfig: {
             voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: voice || 'Zephyr' },
+              prebuiltVoiceConfig: { voiceName: voice },
             },
           },
         },
       });
 
       const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      if (base64Audio) {
+      if (typeof base64Audio === 'string' && base64Audio.length > 0) {
         return res.json({
           success: true,
           audioDataUrl: `data:audio/wav;base64,${base64Audio}`,
@@ -762,10 +760,9 @@ app.post('/api/tts', rateLimitMiddleware('tts', apiRateLimiters.tts), async (req
         });
       }
     } catch (geminiTtsErr: any) {
-      console.warn('Gemini TTS attempt notice:', geminiTtsErr?.message?.slice(0, 80));
+      console.warn('Gemini TTS generation failed; trying the fallback voice provider.');
     }
 
-    // 3. Fallback to Google English/Bengali TTS
     const fallbackAudio = await fetchGoogleTTSAudio(cleanText, isBengali ? 'bn' : 'en');
     if (fallbackAudio) {
       return res.json({
@@ -775,12 +772,17 @@ app.post('/api/tts', rateLimitMiddleware('tts', apiRateLimiters.tts), async (req
       });
     }
 
-    res.status(500).json({ success: false, error: 'No audio generated.' });
-  } catch (error: any) {
-    console.error('TTS error:', error);
-    res.status(500).json({
+    return res.status(502).json({
       success: false,
-      error: error?.message || 'TTS generation error.',
+      status: 'TTS_PROVIDER_ERROR',
+      error: 'Text-to-speech provider did not return audio. Please try again.',
+    });
+  } catch (error: any) {
+    console.error('TTS generation request failed.');
+    return res.status(502).json({
+      success: false,
+      status: 'TTS_PROVIDER_ERROR',
+      error: 'Text-to-speech generation failed. Please try again.',
     });
   }
 });
