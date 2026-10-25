@@ -20,11 +20,11 @@ function sanitizeText(value: string): string {
 
 function extractMessageText(command: string): string {
   const quotedPatterns = [
-    /"([^"\n]{1,500})"/,
-    /“([^”\n]{1,500})”/,
-    /'([^'\n]{1,500})'/,
-    /‘([^’\n]{1,500})’/,
-    /「([^」\n]{1,500})」/,
+    /"([^"\n]{1,5000})"/,
+    /“([^”\n]{1,5000})”/,
+    /'([^'\n]{1,5000})'/,
+    /‘([^’\n]{1,5000})’/,
+    /「([^」\n]{1,5000})」/,
   ];
 
   for (const pattern of quotedPatterns) {
@@ -33,8 +33,8 @@ function extractMessageText(command: string): string {
   }
 
   const labeledPatterns = [
-    /(?:message|text|this|মেসেজ|বার্তা|লিখে\s*দাও|লিখুন)\s*[:：]\s*(.{1,500})$/i,
-    /(?:saying|বলবে|লিখে\s*পাঠাও|লিখে\s*দাও)\s+(.{1,500})$/i,
+    /(?:message|text|this|মেসেজ|বার্তা|লিখে\s*দাও|লিখুন)\s*[:：]\s*(.{1,5000})$/i,
+    /(?:saying|বলবে|লিখে\s*পাঠাও|লিখে\s*দাও)\s+(.{1,5000})$/i,
   ];
 
   for (const pattern of labeledPatterns) {
