@@ -13,7 +13,7 @@ export type MapsGroundingValidationResult =
   | { success: false; error: string };
 
 const MAX_QUERY_LENGTH = 1200;
-const CONTROL_CHARACTERS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
+const CONTROL_CHARACTERS = /[\u0000-\u001F\u007F]/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
