@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "bun run tests/agent-command.test.ts && bun run tests/action-execution-policy.test.ts && bun run tests/github-oauth-service.test.ts"
+    "test": "bun run tests/run-all-tests.ts"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.2",
