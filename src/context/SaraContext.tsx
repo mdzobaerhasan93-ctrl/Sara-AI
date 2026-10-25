@@ -19,6 +19,7 @@ import { AppInventoryService, AppDefinition, InAppAction } from '../services/App
 import { AIAgentService } from '../services/AIAgentService';
 import { planAutomationExecution } from '../services/AutomationExecutionPlan';
 import { validateStoredAutomations } from '../services/AutomationStorageValidation';
+import { validateStoredChatHistory } from '../services/ChatHistoryValidation';
 
 interface SaraContextType {
   // Assistant Status
@@ -234,9 +235,21 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // 6. Messages
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    const saved = localStorage.getItem('sara_chat_history');
+    let saved: string | null = null;
+    try {
+      saved = typeof localStorage !== 'undefined' ? localStorage.getItem('sara_chat_history') : null;
+    } catch {
+      saved = null;
+    }
+
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { }
+      try {
+        const parsed: unknown = JSON.parse(saved);
+        const validated = validateStoredChatHistory(parsed);
+        if (validated !== null) return validated;
+      } catch {
+        // Malformed saved JSON falls back to the welcome message below.
+      }
     }
     return [
       {
@@ -250,7 +263,14 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   useEffect(() => {
-    localStorage.setItem('sara_chat_history', JSON.stringify(messages));
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const safeHistory = validateStoredChatHistory(messages) ?? [];
+        localStorage.setItem('sara_chat_history', JSON.stringify(safeHistory));
+      }
+    } catch {
+      // Keep chat usable if browser storage is disabled or full.
+    }
   }, [messages]);
 
   const addMessage = (msg: Omit<ChatMessage, 'id' | 'timestamp'>) => {
