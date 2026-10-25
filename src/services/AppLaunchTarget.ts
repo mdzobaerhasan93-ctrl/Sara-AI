@@ -28,6 +28,7 @@ const BLOCKED_SCHEMES = new Set([
 function parseSafeHttpsUrl(value: unknown): string | null {
   if (typeof value !== 'string' || value.trim().length === 0) return null;
   const candidate = value.trim();
+  if (candidate.includes('\\')) return null;
 
   try {
     const url = new URL(candidate);
