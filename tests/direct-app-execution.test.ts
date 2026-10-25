@@ -1,5 +1,12 @@
 import assert from 'node:assert/strict';
-import { dispatchDirectAppAction } from '../src/services/DirectAppExecution.ts';
+import { dispatchDirectAppAction, isAndroidAccessibilityBridgeAvailable } from '../src/services/DirectAppExecution.ts';
+
+assert.equal(isAndroidAccessibilityBridgeAvailable(undefined), false);
+assert.equal(isAndroidAccessibilityBridgeAvailable(null), false);
+assert.equal(isAndroidAccessibilityBridgeAvailable({}), false);
+assert.equal(isAndroidAccessibilityBridgeAvailable({ launchApp: () => true }), false);
+assert.equal(isAndroidAccessibilityBridgeAvailable({ performAccessibilityAction: true }), false);
+assert.equal(isAndroidAccessibilityBridgeAvailable({ performAccessibilityAction: () => undefined }), true);
 
 const request = {
   packageName: 'com.instagram.android',
