@@ -23,6 +23,7 @@ import { validateStoredChatHistory } from '../services/ChatHistoryValidation';
 import { validateStoredMemories, validateStoredMemory } from '../services/MemoryStorageValidation';
 import { validateStoredEquippedAccessory, validateStoredEquippedOutfit, validateStoredUnlockedAccessories, validateStoredUnlockedOutfits } from '../services/WardrobeStorageValidation';
 import { DEFAULT_PERSONALITY_SETTINGS, DEFAULT_USER_PROFILE, DEFAULT_VOICE_SETTINGS, normalizePersonalitySettings, normalizeUserProfile, normalizeVoiceSettings } from '../services/PreferencesStorageValidation';
+import { isRewardedAdsAvailable } from '../services/RewardedAdPolicy';
 
 interface SaraContextType {
   // Assistant Status
@@ -93,6 +94,7 @@ interface SaraContextType {
   passRemainingSeconds: number;
   activatePass: (hours?: number) => boolean;
   watchRewardedAd: () => boolean;
+  rewardedAdsAvailable: boolean;
   adsWatchedToday: number;
 
   // Permissions & User Controls
@@ -743,48 +745,27 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return saved !== null ? parseInt(saved, 10) : 110;
   });
 
-  const [adsWatchedToday, setAdsWatchedToday] = useState<number>(() => {
-    const saved = localStorage.getItem('sara_ads_watched');
-    return saved !== null ? parseInt(saved, 10) : 5;
+  // No rewarded-ad SDK or server-side verification endpoint is configured.
+  // Ignore the legacy sara_ads_watched key; it was incremented by button clicks.
+  const rewardedAdsAvailable = isRewardedAdsAvailable({
+    providerSdkInstalled: false,
+    serverSideVerificationConfigured: false,
   });
 
-  const [coinTransactions, setCoinTransactions] = useState<CoinTransaction[]>([
-    {
-      id: 'tx_5',
-      title: 'Rewarded ad #5 of 5',
-      amount: 20,
-      type: 'rewarded_ad',
-      timestamp: 'Today, 05:39 PM',
-    },
-    {
-      id: 'tx_4',
-      title: 'Rewarded ad #4 of 5',
-      amount: 20,
-      type: 'rewarded_ad',
-      timestamp: 'Today, 05:38 PM',
-    },
-    {
-      id: 'tx_3',
-      title: 'Rewarded ad #3 of 5',
-      amount: 20,
-      type: 'rewarded_ad',
-      timestamp: 'Today, 05:37 PM',
-    },
-    {
-      id: 'tx_2',
-      title: 'Rewarded ad #2 of 5',
-      amount: 20,
-      type: 'rewarded_ad',
-      timestamp: 'Today, 05:36 PM',
-    },
-    {
-      id: 'tx_1',
-      title: 'Daily reward (streak day 1)',
-      amount: 10,
-      type: 'daily_reward',
-      timestamp: 'Today, 05:35 PM',
-    },
-  ]);
+  const [adsWatchedToday, setAdsWatchedToday] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('sara_verified_ads_watched_v1');
+      if (saved === null || !/^\d+$/.test(saved)) return 0;
+      const count = Number(saved);
+      return Number.isSafeInteger(count) && count >= 0 && count <= 5 ? count : 0;
+    } catch {
+      return 0;
+    }
+  });
+
+  // Start with an empty verified transaction ledger; never seed sample ad
+  // receipts or sample daily rewards as if they happened for this user.
+  const [coinTransactions, setCoinTransactions] = useState<CoinTransaction[]>([]);
 
   const [lastClaimDate, setLastClaimDate] = useState<string>(() => {
     return localStorage.getItem('sara_last_claim_date') || '';
@@ -806,7 +787,11 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [coinBalance]);
 
   useEffect(() => {
-    localStorage.setItem('sara_ads_watched', adsWatchedToday.toString());
+    try {
+      localStorage.setItem('sara_verified_ads_watched_v1', String(adsWatchedToday));
+    } catch {
+      // Rewards stay disabled when storage cannot be written.
+    }
   }, [adsWatchedToday]);
 
   useEffect(() => {
@@ -1186,19 +1171,12 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('sara_last_claim_date');
   };
 
-  const watchRewardedAd = () => {
+  const watchRewardedAd = (): boolean => {
+    // Fail closed until a real rewarded-ad SDK and server-side verification
+    // callback have been integrated. A button click is never a valid receipt.
+    if (!rewardedAdsAvailable) return false;
     if (adsWatchedToday >= 5) return false;
-    setAdsWatchedToday((prev) => prev + 1);
-    setCoinBalance((prev) => prev + 20);
-    const newTx: CoinTransaction = {
-      id: `tx_${Date.now()}`,
-      title: `Rewarded ad #${adsWatchedToday + 1} of 5`,
-      amount: 20,
-      type: 'rewarded_ad',
-      timestamp: 'Just now',
-    };
-    setCoinTransactions((prev) => [newTx, ...prev]);
-    return true;
+    return false;
   };
 
   const activatePass = (hours: number = 6) => {
@@ -1985,6 +1963,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
         passRemainingSeconds,
         activatePass,
         watchRewardedAd,
+        rewardedAdsAvailable,
         adsWatchedToday,
         permissions,
         requestMicrophonePermission,

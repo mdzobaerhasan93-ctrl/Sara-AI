@@ -60,6 +60,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
     dailyRewardCountdown,
     dailyStreak,
     watchRewardedAd,
+    rewardedAdsAvailable,
   } = useSara();
 
   const [coreViewMode, setCoreViewMode] = useState<'3d' | 'orb'>('3d');
@@ -391,14 +392,28 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate, onOpenVoice }) =
           </button>
 
           <button
+            type="button"
             onClick={() => {
-              watchRewardedAd();
-              speakText('বিজ্ঞাপনে ক্লিক করে ২০ কয়েন বোনাস পেয়ে গেছো বাবু! দারুণ 🎉', 'excited');
+              const rewarded = watchRewardedAd();
+              if (rewarded) {
+                speakText('Verified rewarded ad completion পাওয়া গেছে, তাই bonus record করা হয়েছে।', 'excited');
+              } else {
+                speakText('বাবু, এখনো কোনো rewarded ad provider বা server verification সংযুক্ত নেই। তাই কোনো bonus coin দেওয়া হয়নি।', 'caring');
+              }
             }}
-            className="px-3 py-2 rounded-xl text-xs font-bold bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-500/40 transition-all active:scale-95 flex items-center gap-1"
+            disabled={!rewardedAdsAvailable}
+            aria-describedby="rewarded-ad-status"
+            className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1 ${rewardedAdsAvailable
+              ? 'bg-purple-950/80 hover:bg-purple-900 text-purple-200 border-purple-500/40 active:scale-95'
+              : 'bg-slate-900 text-slate-500 border-slate-700 cursor-not-allowed opacity-75'}`}
           >
-            <span>📺 অ্যাড দেখে কয়েন</span>
+            <span>📺 {rewardedAdsAvailable ? 'অ্যাড দেখে কয়েন' : 'অ্যাড সার্ভিস সংযুক্ত নয়'}</span>
           </button>
+          <p id="rewarded-ad-status" className="w-full text-[10px] text-slate-500 mt-1">
+            {rewardedAdsAvailable
+              ? 'বোনাস কেবল verified ad completion-এর পর দেওয়া হবে।'
+              : 'Ad provider ও server-side verification না থাকায় bonus coins আপাতত বন্ধ।'}
+          </p>
         </div>
       </div>
 
