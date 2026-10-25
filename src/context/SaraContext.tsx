@@ -119,7 +119,7 @@ interface SaraContextType {
 
   // Native Apps & Custom App Management
   availableApps: AppDefinition[];
-  registerCustomApp: (app: AppDefinition) => void;
+  registerCustomApp: (app: AppDefinition) => boolean;
   removeCustomApp: (id: string) => void;
   refreshApps: () => void;
 
@@ -1815,9 +1815,10 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAvailableApps(AppInventoryService.getAllApps());
   }, []);
 
-  const registerCustomApp = useCallback((app: AppDefinition) => {
-    AppInventoryService.registerCustomApp(app);
+  const registerCustomApp = useCallback((app: AppDefinition): boolean => {
+    const registered = AppInventoryService.registerCustomApp(app);
     setAvailableApps(AppInventoryService.getAllApps());
+    return registered;
   }, []);
 
   const removeCustomApp = useCallback((id: string) => {

@@ -28,6 +28,7 @@ import { useSara } from '../../context/SaraContext';
 import { AppInventoryService, AppDefinition, InAppAction } from '../../services/AppInventoryService';
 import { AIAgentService } from '../../services/AIAgentService';
 import { dispatchDirectAppAction } from '../../services/DirectAppExecution';
+import { createSafeAppId } from '../../services/AppRegistryValidation';
 
 interface DirectAppControllerModalProps {
   isOpen: boolean;
@@ -228,12 +229,18 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
     e.preventDefault();
     if (!newAppName.trim() || !newAppPkg.trim()) return;
 
+    const newAppId = createSafeAppId(newAppName);
+    if (!newAppId) {
+      speakText('এই অ্যাপের নাম থেকে নিরাপদ ID তৈরি করা যায়নি। ছোট ও সাধারণ app name ব্যবহার করুন।', 'caring');
+      return;
+    }
+
     const newApp: AppDefinition = {
-      id: newAppName.toLowerCase().replace(/\s+/g, '_'),
+      id: newAppId,
       name: newAppName,
       bengaliName: newAppName,
       packageName: newAppPkg,
-      launchUri: `${newAppName.toLowerCase()}://`,
+      launchUri: `${newAppId}://`,
       webFallbackUrl: '',
       category: newAppCategory,
       iconColor: '#EC4899',
@@ -248,18 +255,23 @@ export const DirectAppControllerModal: React.FC<DirectAppControllerModalProps> =
             `Launching ${newAppPkg} via Android bridge`,
             'Injecting UI hierarchy accessibility listener',
             'Executing AI touch and navigation automation',
-            'Task finished successfully!'
+            'Waiting for native bridge completion confirmation'
           ]
         }
       ]
     };
 
-    registerCustomApp(newApp);
+    const registered = registerCustomApp(newApp);
+    if (!registered) {
+      speakText('এই app data যাচাই পাস করেনি অথবা একই ID-র app আগে থেকেই আছে। Built-in app পরিবর্তন করা যাবে না।', 'caring');
+      return;
+    }
+
     setSelectedApp(newApp);
     setShowAddAppModal(false);
     setNewAppName('');
     setNewAppPkg('');
-    speakText(`আপনার নতুন অ্যাপ '${newApp.name}' কন্ট্রোল সিস্টেমে যুক্ত করা হয়েছে! ❤️`, 'happy');
+    speakText(`আপনার নতুন অ্যাপ '${newApp.name}' registry-তে যুক্ত হয়েছে। App control কাজ করবে কেবল native bridge উপলব্ধ থাকলে। ❤️`, 'happy');
   };
 
   return (
