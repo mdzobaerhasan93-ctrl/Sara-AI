@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { WebSocketServer, WebSocket } from 'ws';
 import { decideActionExecutionRequest } from './src/services/ActionExecutionPolicy.ts';
+import { validateActionProposal } from './src/services/ActionProposalValidation.ts';
 
 dotenv.config();
 
@@ -155,23 +156,27 @@ Ask the user warmly for their approval before execution. Never claim an external
     const emotion = emotionMatch ? emotionMatch[1].toLowerCase() : 'caring';
     const cleanText = replyText.replace(/\[EMOTION:[a-zA-Z]+\]\s*/, '');
 
-    // Extract action proposals if present
+    // Extract and validate action proposals before exposing them to the approval UI.
     const actionMatch = cleanText.match(/```action-proposal\s*([\s\S]*?)\s*```/);
-    let actionProposal = null;
+    let actionProposal: ReturnType<typeof validateActionProposal> = null;
     let displayText = cleanText;
     if (actionMatch) {
-      try {
-        actionProposal = JSON.parse(actionMatch[1]);
-        displayText = cleanText.replace(/```action-proposal[\s\S]*?```/, '').trim();
-      } catch (e) {
-        console.warn('Failed to parse action proposal json:', e);
+      // Always remove the machine block from display text, even if it fails validation.
+      displayText = cleanText.replace(/```action-proposal[\s\S]*?```/, '').trim();
+      actionProposal = validateActionProposal(actionMatch[1]);
+      if (!actionProposal) {
+        console.warn('Rejected malformed or unsupported AI action proposal.');
+        displayText = [
+          displayText,
+          'প্রস্তাবিত অ্যাকশনটি নিরাপত্তা যাচাই পাস করেনি, তাই approval queue-তে যোগ করা হয়নি এবং কোনো কাজ করা হয়নি।',
+        ].filter(Boolean).join('\n\n');
       }
     }
 
     res.json({
       success: true,
       text: displayText,
-      rawText: cleanText,
+      rawText: displayText,
       emotion,
       actionProposal,
       provider: usedGemini ? 'gemini-cloud' : 'sara-neural-bengali',
