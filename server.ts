@@ -5,7 +5,9 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { WebSocketServer, WebSocket } from 'ws';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { decideActionExecutionRequest } from './src/services/ActionExecutionPolicy.ts';
+import { parseAllowedGitHubUsers, signGitHubSession, verifyGitHubSession } from './src/services/GitHubOAuthService.ts';
 
 dotenv.config();
 
@@ -17,6 +19,251 @@ const server = http.createServer(app);
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.use(express.json({ limit: '15mb' }));
+
+interface GitHubOAuthRuntimeConfig {
+  clientId: string;
+  clientSecret: string;
+  callbackUrl: string;
+  sessionSecret: string;
+  allowedUsers: string[];
+  appOrigin: string;
+}
+
+const GITHUB_SESSION_COOKIE = 'sara_github_session';
+const GITHUB_STATE_COOKIE = 'sara_oauth_state';
+const GITHUB_SESSION_TTL_SECONDS = 8 * 60 * 60;
+const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
+
+function getGitHubOAuthRuntimeConfig(): GitHubOAuthRuntimeConfig | null {
+  const clientId = process.env.GITHUB_OAUTH_CLIENT_ID?.trim() || '';
+  const clientSecret = process.env.GITHUB_OAUTH_CLIENT_SECRET?.trim() || '';
+  const callbackUrlValue = process.env.GITHUB_OAUTH_CALLBACK_URL?.trim() || '';
+  const sessionSecret = process.env.SARA_SESSION_SECRET || '';
+  const allowedUsers = parseAllowedGitHubUsers(process.env.SARA_GITHUB_ALLOWED_USERS);
+  const appUrlValue = process.env.APP_URL?.trim() || '';
+
+  if (!clientId || !clientSecret || !callbackUrlValue || sessionSecret.length < 32 || allowedUsers.length === 0 || !appUrlValue) {
+    return null;
+  }
+
+  try {
+    const callbackUrl = new URL(callbackUrlValue);
+    const appUrl = new URL(appUrlValue);
+    const isProduction = process.env.NODE_ENV === 'production';
+    if (callbackUrl.pathname !== '/api/auth/github/callback') return null;
+    if (callbackUrl.origin !== appUrl.origin) return null;
+    if (isProduction && (callbackUrl.protocol !== 'https:' || appUrl.protocol !== 'https:')) return null;
+    if (callbackUrl.username || callbackUrl.password || callbackUrl.hash) return null;
+
+    return {
+      clientId,
+      clientSecret,
+      callbackUrl: callbackUrl.toString(),
+      sessionSecret,
+      allowedUsers,
+      appOrigin: appUrl.origin,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function readRequestCookie(req: express.Request, name: string): string | undefined {
+  const cookieHeader = req.headers.cookie;
+  if (!cookieHeader) return undefined;
+
+  for (const entry of cookieHeader.split(';')) {
+    const separator = entry.indexOf('=');
+    if (separator < 0) continue;
+    const key = entry.slice(0, separator).trim();
+    if (key !== name) continue;
+    const value = entry.slice(separator + 1).trim();
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
+function constantTimeStringEquals(left: string, right: string): boolean {
+  const a = Buffer.from(left);
+  const b = Buffer.from(right);
+  return a.length === b.length && a.length > 0 && timingSafeEqual(a, b);
+}
+
+function isSameAppOrigin(req: express.Request, appOrigin: string): boolean {
+  const requestOrigin = req.get('origin');
+  return typeof requestOrigin === 'string' && constantTimeStringEquals(requestOrigin, appOrigin);
+}
+
+function clearOAuthStateCookie(res: express.Response): void {
+  res.clearCookie(GITHUB_STATE_COOKIE, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/api/auth/github/callback',
+  });
+}
+
+// OAuth configuration is fail-closed. A blank allowlist or weak signing secret
+// disables sign-in and protected dispatch rather than accepting arbitrary users.
+app.get('/api/auth/session', (req, res) => {
+  const config = getGitHubOAuthRuntimeConfig();
+  if (!config) {
+    return res.status(503).json({ configured: false, authenticated: false });
+  }
+
+  const session = verifyGitHubSession(
+    readRequestCookie(req, GITHUB_SESSION_COOKIE),
+    config.sessionSecret,
+    config.allowedUsers,
+  );
+  return res.json(session
+    ? { configured: true, authenticated: true, login: session.login, expiresAt: session.expiresAt }
+    : { configured: true, authenticated: false });
+});
+
+app.get('/api/auth/github', (_req, res) => {
+  const config = getGitHubOAuthRuntimeConfig();
+  if (!config) {
+    return res.status(503).json({
+      error: 'GitHub sign-in is not configured. Set the OAuth client, callback URL, a strong session secret, and an allowed-user list.',
+    });
+  }
+
+  const state = randomBytes(32).toString('base64url');
+  res.cookie(GITHUB_STATE_COOKIE, state, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/api/auth/github/callback',
+    maxAge: OAUTH_STATE_TTL_MS,
+  });
+
+  const authorizeUrl = new URL('https://github.com/login/oauth/authorize');
+  authorizeUrl.searchParams.set('client_id', config.clientId);
+  authorizeUrl.searchParams.set('redirect_uri', config.callbackUrl);
+  authorizeUrl.searchParams.set('scope', 'read:user');
+  authorizeUrl.searchParams.set('state', state);
+  return res.redirect(302, authorizeUrl.toString());
+});
+
+app.get('/api/auth/github/callback', async (req, res) => {
+  const config = getGitHubOAuthRuntimeConfig();
+  clearOAuthStateCookie(res);
+  if (!config) {
+    return res.status(503).send('GitHub sign-in is not configured on this server.');
+  }
+
+  const queryError = typeof req.query.error === 'string' ? req.query.error : '';
+  const code = typeof req.query.code === 'string' ? req.query.code : '';
+  const returnedState = typeof req.query.state === 'string' ? req.query.state : '';
+  const cookieState = readRequestCookie(req, GITHUB_STATE_COOKIE);
+  const appRedirect = (result: 'success' | 'error') =>
+    res.redirect(302, new URL(`/?auth=${result}`, config.appOrigin).toString());
+
+  if (queryError || !code || !returnedState || !cookieState || !constantTimeStringEquals(returnedState, cookieState)) {
+    return res.status(400).send('GitHub sign-in could not be verified. Please restart sign-in.');
+  }
+
+  try {
+    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: new URLSearchParams({
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
+        code,
+        redirect_uri: config.callbackUrl,
+      }),
+    });
+    if (!tokenResponse.ok) return appRedirect('error');
+
+    const tokenData: unknown = await tokenResponse.json();
+    if (!tokenData || typeof tokenData !== 'object' || !('access_token' in tokenData)
+      || typeof tokenData.access_token !== 'string' || !tokenData.access_token) {
+      return appRedirect('error');
+    }
+
+    const profileResponse = await fetch('https://api.github.com/user', {
+      headers: {
+        Authorization: `Bearer ${tokenData.access_token}`,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    });
+    if (!profileResponse.ok) return appRedirect('error');
+
+    const profile: unknown = await profileResponse.json();
+    if (!profile || typeof profile !== 'object' || !('login' in profile) || typeof profile.login !== 'string') {
+      return appRedirect('error');
+    }
+
+    const sessionCookie = signGitHubSession(
+      profile.login,
+      config.sessionSecret,
+      Date.now(),
+      GITHUB_SESSION_TTL_SECONDS,
+    );
+    const allowedLogin = parseAllowedGitHubUsers(config.allowedUsers.join(',')).includes(profile.login.toLowerCase());
+    if (!sessionCookie || !allowedLogin) {
+      return res.status(403).send('This GitHub account is not allowed to access Sara.');
+    }
+
+    res.cookie(GITHUB_SESSION_COOKIE, sessionCookie, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: GITHUB_SESSION_TTL_SECONDS * 1000,
+    });
+    return appRedirect('success');
+  } catch {
+    // Never log or return OAuth codes, access tokens, or provider error bodies.
+    return appRedirect('error');
+  }
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  const config = getGitHubOAuthRuntimeConfig();
+  if (config && !isSameAppOrigin(req, config.appOrigin)) {
+    return res.status(403).json({ error: 'Cross-origin logout requests are not allowed.' });
+  }
+  res.clearCookie(GITHUB_SESSION_COOKIE, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+  });
+  return res.status(204).end();
+});
+
+// The middleware is registered before API routes so it also protects the
+// GitHub Actions endpoint when that route is added to the server.
+app.use('/api/github-actions/dispatch', (req, res, next) => {
+  const config = getGitHubOAuthRuntimeConfig();
+  if (!config) {
+    return res.status(503).json({ success: false, status: 'AUTH_NOT_CONFIGURED', error: 'GitHub user authentication is not configured. Dispatch is disabled.' });
+  }
+  if (req.method !== 'POST') return next();
+  if (!isSameAppOrigin(req, config.appOrigin)) {
+    return res.status(403).json({ success: false, status: 'ORIGIN_REJECTED', error: 'Only same-origin approval requests are accepted.' });
+  }
+
+  const session = verifyGitHubSession(
+    readRequestCookie(req, GITHUB_SESSION_COOKIE),
+    config.sessionSecret,
+    config.allowedUsers,
+  );
+  if (!session) {
+    return res.status(401).json({ success: false, status: 'AUTH_REQUIRED', error: 'Sign in with an allowed GitHub account before approving this workflow.' });
+  }
+
+  res.locals.githubLogin = session.login;
+  return next();
+});
 
 // Initialize GoogleGenAI server-side with telemetry header and custom API key support
 const getAIClient = (req?: express.Request) => {
