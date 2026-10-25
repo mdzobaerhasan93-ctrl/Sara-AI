@@ -25,6 +25,7 @@ import { validateStoredMemories, validateStoredMemory } from '../services/Memory
 import { validateStoredEquippedAccessory, validateStoredEquippedOutfit, validateStoredUnlockedAccessories, validateStoredUnlockedOutfits } from '../services/WardrobeStorageValidation';
 import { DEFAULT_PERSONALITY_SETTINGS, DEFAULT_USER_PROFILE, DEFAULT_VOICE_SETTINGS, normalizePersonalitySettings, normalizeUserProfile, normalizeVoiceSettings } from '../services/PreferencesStorageValidation';
 import { isRewardedAdsAvailable } from '../services/RewardedAdPolicy';
+import { safeLocalStorageGetItem, safeLocalStorageRemoveItem, safeLocalStorageSetItem } from '../services/SafeLocalStorage';
 
 interface SaraContextType {
   // Assistant Status
@@ -157,7 +158,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
     let saved: string | null = null;
     try {
-      saved = typeof localStorage !== 'undefined' ? localStorage.getItem('sara_user_profile') : null;
+      saved = safeLocalStorageGetItem('sara_user_profile');
     } catch {
       saved = null;
     }
@@ -174,8 +175,8 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     try {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('sara_user_profile', JSON.stringify(normalizeUserProfile(userProfile)));
+      if (typeof window !== 'undefined') {
+        safeLocalStorageSetItem('sara_user_profile', JSON.stringify(normalizeUserProfile(userProfile)));
       }
     } catch {
       // The profile remains usable if browser storage is disabled or full.
@@ -190,7 +191,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [personalitySettings, setPersonalitySettings] = useState<PersonalitySettings>(() => {
     let saved: string | null = null;
     try {
-      saved = typeof localStorage !== 'undefined' ? localStorage.getItem('sara_personality_settings') : null;
+      saved = safeLocalStorageGetItem('sara_personality_settings');
     } catch {
       saved = null;
     }
@@ -207,8 +208,8 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     try {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('sara_personality_settings', JSON.stringify(normalizePersonalitySettings(personalitySettings)));
+      if (typeof window !== 'undefined') {
+        safeLocalStorageSetItem('sara_personality_settings', JSON.stringify(normalizePersonalitySettings(personalitySettings)));
       }
     } catch {
       // The settings remain usable if browser storage is disabled or full.
@@ -223,7 +224,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>(() => {
     let saved: string | null = null;
     try {
-      saved = typeof localStorage !== 'undefined' ? localStorage.getItem('sara_voice_settings') : null;
+      saved = safeLocalStorageGetItem('sara_voice_settings');
     } catch {
       saved = null;
     }
@@ -240,8 +241,8 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     try {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('sara_voice_settings', JSON.stringify(normalizeVoiceSettings(voiceSettings)));
+      if (typeof window !== 'undefined') {
+        safeLocalStorageSetItem('sara_voice_settings', JSON.stringify(normalizeVoiceSettings(voiceSettings)));
       }
     } catch {
       // The settings remain usable if browser storage is disabled or full.
@@ -254,18 +255,18 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // 5. Active Avatar
   const [activeAvatarId, setActiveAvatarId] = useState<string>(() => {
-    return localStorage.getItem('sara_active_avatar') || 'sara-cyberpunk';
+    return safeLocalStorageGetItem('sara_active_avatar') || 'sara-cyberpunk';
   });
 
   useEffect(() => {
-    localStorage.setItem('sara_active_avatar', activeAvatarId);
+    safeLocalStorageSetItem('sara_active_avatar', activeAvatarId);
   }, [activeAvatarId]);
 
   // 6. Messages
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     let saved: string | null = null;
     try {
-      saved = typeof localStorage !== 'undefined' ? localStorage.getItem('sara_chat_history') : null;
+      saved = safeLocalStorageGetItem('sara_chat_history');
     } catch {
       saved = null;
     }
@@ -292,9 +293,9 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     try {
-      if (typeof localStorage !== 'undefined') {
+      if (typeof window !== 'undefined') {
         const safeHistory = validateStoredChatHistory(messages) ?? [];
-        localStorage.setItem('sara_chat_history', JSON.stringify(safeHistory));
+        safeLocalStorageSetItem('sara_chat_history', JSON.stringify(safeHistory));
       }
     } catch {
       // Keep chat usable if browser storage is disabled or full.
@@ -331,7 +332,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [memories, setMemories] = useState<MemoryItem[]>(() => {
     let saved: string | null = null;
     try {
-      saved = typeof localStorage !== 'undefined' ? localStorage.getItem('sara_memories') : null;
+      saved = safeLocalStorageGetItem('sara_memories');
     } catch {
       saved = null;
     }
@@ -372,9 +373,9 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     try {
-      if (typeof localStorage !== 'undefined') {
+      if (typeof window !== 'undefined') {
         const safeMemories = validateStoredMemories(memories) ?? [];
-        localStorage.setItem('sara_memories', JSON.stringify(safeMemories));
+        safeLocalStorageSetItem('sara_memories', JSON.stringify(safeMemories));
       }
     } catch {
       // Memory remains usable if browser storage is disabled or full.
@@ -415,7 +416,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [automations, setAutomations] = useState<AutomationItem[]>(() => {
     let saved: string | null = null;
     try {
-      saved = typeof localStorage !== 'undefined' ? localStorage.getItem('sara_automations') : null;
+      saved = safeLocalStorageGetItem('sara_automations');
     } catch {
       saved = null;
     }
@@ -438,7 +439,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (updated.id === 'auto_1' || updated.id === 'auto_2') {
               let explicitlyEnabled = false;
               try {
-                explicitlyEnabled = localStorage.getItem('sara_user_enabled_' + updated.id) === 'true';
+                explicitlyEnabled = safeLocalStorageGetItem('sara_user_enabled_' + updated.id) === 'true';
               } catch {
                 explicitlyEnabled = false;
               }
@@ -488,8 +489,8 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     try {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('sara_automations', JSON.stringify(automations));
+      if (typeof window !== 'undefined') {
+        safeLocalStorageSetItem('sara_automations', JSON.stringify(automations));
       }
     } catch {
       // The app remains usable if browser storage is disabled or full.
@@ -502,10 +503,10 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (a.id === id) {
           const nextVal = !a.enabled;
           if (nextVal) {
-            localStorage.setItem('sara_user_enabled_' + id, 'true');
+            safeLocalStorageSetItem('sara_user_enabled_' + id, 'true');
             alarmAudio.unlock();
           } else {
-            localStorage.removeItem('sara_user_enabled_' + id);
+            safeLocalStorageRemoveItem('sara_user_enabled_' + id);
           }
           return { ...a, enabled: nextVal };
         }
@@ -535,7 +536,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
       targetTimestamp,
       lastRun: undefined,
     };
-    localStorage.setItem('sara_user_enabled_' + newItem.id, 'true');
+    safeLocalStorageSetItem('sara_user_enabled_' + newItem.id, 'true');
     setAutomations((prev) => [newItem, ...prev]);
     addActivityLog({
       title: `New AI automation created: ${name}`,
@@ -698,8 +699,8 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const isDue = checkScheduleMatch(auto.schedule, now, auto.targetTime, auto.targetTimestamp);
         if (isDue) {
           const runKey = `sara_alarm_triggered_${auto.id}_${minuteKey}`;
-          if (!localStorage.getItem(runKey)) {
-            localStorage.setItem(runKey, 'true');
+          if (!safeLocalStorageGetItem(runKey)) {
+            safeLocalStorageSetItem(runKey, 'true');
             triggerAlarmNow(auto);
           }
         }
@@ -742,7 +743,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // 11. Coins & Economy
   const [coinBalance, setCoinBalance] = useState<number>(() => {
-    const saved = localStorage.getItem('sara_coin_balance');
+    const saved = safeLocalStorageGetItem('sara_coin_balance');
     return saved !== null ? parseInt(saved, 10) : 110;
   });
 
@@ -755,7 +756,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [adsWatchedToday, setAdsWatchedToday] = useState<number>(() => {
     try {
-      const saved = localStorage.getItem('sara_verified_ads_watched_v1');
+      const saved = safeLocalStorageGetItem('sara_verified_ads_watched_v1');
       if (saved === null || !/^\d+$/.test(saved)) return 0;
       const count = Number(saved);
       return Number.isSafeInteger(count) && count >= 0 && count <= 5 ? count : 0;
@@ -769,42 +770,42 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [coinTransactions, setCoinTransactions] = useState<CoinTransaction[]>([]);
 
   const [lastClaimDate, setLastClaimDate] = useState<string>(() => {
-    return localStorage.getItem('sara_last_claim_date') || '';
+    return safeLocalStorageGetItem('sara_last_claim_date') || '';
   });
 
   const [dailyStreak, setDailyStreak] = useState<number>(() => {
-    const s = localStorage.getItem('sara_daily_streak');
+    const s = safeLocalStorageGetItem('sara_daily_streak');
     return s ? parseInt(s, 10) : 1;
   });
 
   const [passExpiresAt, setPassExpiresAt] = useState<number>(() => {
-    const saved = localStorage.getItem('sara_pass_expiry');
+    const saved = safeLocalStorageGetItem('sara_pass_expiry');
     // Default pass active 6 hours from launch
     return saved ? parseInt(saved, 10) : Date.now() + 5.65 * 60 * 60 * 1000;
   });
 
   useEffect(() => {
-    localStorage.setItem('sara_coin_balance', coinBalance.toString());
+    safeLocalStorageSetItem('sara_coin_balance', coinBalance.toString());
   }, [coinBalance]);
 
   useEffect(() => {
     try {
-      localStorage.setItem('sara_verified_ads_watched_v1', String(adsWatchedToday));
+      safeLocalStorageSetItem('sara_verified_ads_watched_v1', String(adsWatchedToday));
     } catch {
       // Rewards stay disabled when storage cannot be written.
     }
   }, [adsWatchedToday]);
 
   useEffect(() => {
-    localStorage.setItem('sara_last_claim_date', lastClaimDate);
+    safeLocalStorageSetItem('sara_last_claim_date', lastClaimDate);
   }, [lastClaimDate]);
 
   useEffect(() => {
-    localStorage.setItem('sara_daily_streak', dailyStreak.toString());
+    safeLocalStorageSetItem('sara_daily_streak', dailyStreak.toString());
   }, [dailyStreak]);
 
   useEffect(() => {
-    localStorage.setItem('sara_pass_expiry', passExpiresAt.toString());
+    safeLocalStorageSetItem('sara_pass_expiry', passExpiresAt.toString());
   }, [passExpiresAt]);
 
   const isDailyRewardClaimed = lastClaimDate === new Date().toDateString();
@@ -827,29 +828,29 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Wardrobe state & methods. Restore inventory first so equipped IDs can be checked against it.
   const [unlockedOutfits, setUnlockedOutfits] = useState<string[]>(() => {
-    return validateStoredUnlockedOutfits(localStorage.getItem('sara_unlocked_outfits'));
+    return validateStoredUnlockedOutfits(safeLocalStorageGetItem('sara_unlocked_outfits'));
   });
   const [unlockedAccessories, setUnlockedAccessories] = useState<string[]>(() => {
-    return validateStoredUnlockedAccessories(localStorage.getItem('sara_unlocked_accessories'));
+    return validateStoredUnlockedAccessories(safeLocalStorageGetItem('sara_unlocked_accessories'));
   });
   const [equippedOutfit, setEquippedOutfit] = useState<string>(() => {
-    return validateStoredEquippedOutfit(localStorage.getItem('sara_equipped_outfit'), unlockedOutfits);
+    return validateStoredEquippedOutfit(safeLocalStorageGetItem('sara_equipped_outfit'), unlockedOutfits);
   });
   const [equippedAccessory, setEquippedAccessory] = useState<string>(() => {
-    return validateStoredEquippedAccessory(localStorage.getItem('sara_equipped_accessory'), unlockedAccessories);
+    return validateStoredEquippedAccessory(safeLocalStorageGetItem('sara_equipped_accessory'), unlockedAccessories);
   });
 
   useEffect(() => {
-    localStorage.setItem('sara_equipped_outfit', equippedOutfit);
+    safeLocalStorageSetItem('sara_equipped_outfit', equippedOutfit);
   }, [equippedOutfit]);
   useEffect(() => {
-    localStorage.setItem('sara_equipped_accessory', equippedAccessory);
+    safeLocalStorageSetItem('sara_equipped_accessory', equippedAccessory);
   }, [equippedAccessory]);
   useEffect(() => {
-    localStorage.setItem('sara_unlocked_outfits', JSON.stringify(unlockedOutfits));
+    safeLocalStorageSetItem('sara_unlocked_outfits', JSON.stringify(unlockedOutfits));
   }, [unlockedOutfits]);
   useEffect(() => {
-    localStorage.setItem('sara_unlocked_accessories', JSON.stringify(unlockedAccessories));
+    safeLocalStorageSetItem('sara_unlocked_accessories', JSON.stringify(unlockedAccessories));
   }, [unlockedAccessories]);
 
   const equipOutfit = (id: string) => {
@@ -915,7 +916,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Gesture Mappings
   const [gestureMappings, setGestureMappings] = useState<Record<string, string>>(() => {
-    const saved = localStorage.getItem('sara_gesture_mappings');
+    const saved = safeLocalStorageGetItem('sara_gesture_mappings');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) {}
     }
@@ -928,7 +929,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   useEffect(() => {
-    localStorage.setItem('sara_gesture_mappings', JSON.stringify(gestureMappings));
+    safeLocalStorageSetItem('sara_gesture_mappings', JSON.stringify(gestureMappings));
   }, [gestureMappings]);
 
   const updateGestureMapping = (gesture: string, automationId: string) => {
@@ -963,12 +964,12 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Screen Control State & Methods
   const [screenControlEnabled, setScreenControlEnabled] = useState<boolean>(() => {
-    const saved = localStorage.getItem('sara_screen_control_enabled');
+    const saved = safeLocalStorageGetItem('sara_screen_control_enabled');
     return saved !== null ? JSON.parse(saved) : true;
   });
 
   useEffect(() => {
-    localStorage.setItem('sara_screen_control_enabled', JSON.stringify(screenControlEnabled));
+    safeLocalStorageSetItem('sara_screen_control_enabled', JSON.stringify(screenControlEnabled));
   }, [screenControlEnabled]);
 
   const executeScreenCommand = (command: string): boolean => {
@@ -1171,7 +1172,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetDailyRewardForTest = () => {
     setLastClaimDate('');
-    localStorage.removeItem('sara_last_claim_date');
+    safeLocalStorageRemoveItem('sara_last_claim_date');
   };
 
   const watchRewardedAd = (): boolean => {
@@ -1240,7 +1241,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-gemini-api-key': localStorage.getItem('sara_custom_gemini_key') || '',
+            'x-gemini-api-key': safeLocalStorageGetItem('sara_custom_gemini_key') || '',
           },
           body: JSON.stringify({
             text: speechClean,
@@ -1397,7 +1398,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // 12.5 Interactive User Permissions State & Handlers
   const [permissions, setPermissions] = useState<AppPermissions>(() => {
-    const saved = localStorage.getItem('sara_app_permissions');
+    const saved = safeLocalStorageGetItem('sara_app_permissions');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) {}
     }
@@ -1413,7 +1414,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   useEffect(() => {
-    localStorage.setItem('sara_app_permissions', JSON.stringify(permissions));
+    safeLocalStorageSetItem('sara_app_permissions', JSON.stringify(permissions));
   }, [permissions]);
 
   const togglePermission = (key: keyof AppPermissions, value?: boolean) => {
@@ -1570,7 +1571,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-gemini-api-key': localStorage.getItem('sara_custom_gemini_key') || '',
+            'x-gemini-api-key': safeLocalStorageGetItem('sara_custom_gemini_key') || '',
           },
           body: JSON.stringify({
             prompt: content,
@@ -1621,7 +1622,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-gemini-api-key': localStorage.getItem('sara_custom_gemini_key') || '',
+            'x-gemini-api-key': safeLocalStorageGetItem('sara_custom_gemini_key') || '',
           },
           body: JSON.stringify({
             query: content,
@@ -1654,7 +1655,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-gemini-api-key': localStorage.getItem('sara_custom_gemini_key') || '',
+          'x-gemini-api-key': safeLocalStorageGetItem('sara_custom_gemini_key') || '',
         },
         body: JSON.stringify({
           messages: [...messages, userMsg].map((m) => ({
