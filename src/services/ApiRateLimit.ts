@@ -86,7 +86,7 @@ export class InMemoryRateLimiter {
   }
 
   private cleanupExpired(now: number): void {
-    if (now - this.lastCleanupAt < CLEANUP_INTERVAL_MS && this.buckets.size < this.maxTrackedKeys) {
+    if (now - this.lastCleanupAt < CLEANUP_INTERVAL_MS) {
       return;
     }
 
