@@ -26,7 +26,11 @@ assert.equal(independentClient.remaining, 1);
 
 const afterWindow = limiter.consume('client-a', 61_000);
 assert.equal(afterWindow.allowed, true, 'Expired timestamps should no longer count');
-assert.equal(afterWindow.remaining, 1);
+assert.equal(afterWindow.remaining, 0, 'The second request is still inside the rolling window at this timestamp');
+
+const nextBoundary = limiter.consume('client-a', 61_001);
+assert.equal(nextBoundary.allowed, true, 'The second request should expire at its own window boundary');
+assert.equal(nextBoundary.remaining, 0);
 
 const invalidKeyLimiter = new InMemoryRateLimiter(1, 1000);
 assert.equal(invalidKeyLimiter.consume('', 10).allowed, true);
