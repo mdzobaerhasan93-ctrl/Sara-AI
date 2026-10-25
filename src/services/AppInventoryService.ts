@@ -1,3 +1,4 @@
+import { mergeSavedApps, validateAppDefinition } from './AppRegistryValidation';
 import { resolveAppLaunchTarget } from './AppLaunchTarget';
 
 export interface InAppAction {
@@ -361,26 +362,19 @@ export class AppInventoryService {
   private static registry: Record<string, AppDefinition> = AppInventoryService.loadRegistry();
 
   private static loadRegistry(): Record<string, AppDefinition> {
-    const base: Record<string, AppDefinition> = { ...INITIAL_APP_REGISTRY };
+    const builtIns: Record<string, AppDefinition> = { ...INITIAL_APP_REGISTRY };
     try {
       const saved = typeof window !== 'undefined' ? localStorage.getItem('sara_custom_apps') : null;
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          parsed.forEach((app: AppDefinition) => {
-            if (app && app.id) {
-              base[app.id.toLowerCase()] = app;
-            }
-          });
-        } else if (typeof parsed === 'object') {
-          Object.assign(base, parsed);
-        }
-      }
-    } catch (e) {
-      console.error('Error loading custom apps', e);
+      if (!saved) return mergeSavedApps(builtIns, []);
+
+      const parsed: unknown = JSON.parse(saved);
+      return mergeSavedApps(builtIns, parsed);
+    } catch (error) {
+      console.warn('Could not load saved custom apps; using built-in registry only.');
+      return mergeSavedApps(builtIns, []);
     }
-    return base;
   }
+
 
   static getAllApps(): AppDefinition[] {
     return Object.values(this.registry);
@@ -402,20 +396,38 @@ export class AppInventoryService {
     );
   }
 
-  static registerCustomApp(app: AppDefinition) {
-    this.registry[app.id.toLowerCase()] = app;
+  static registerCustomApp(appInput: AppDefinition): boolean {
+    const app = validateAppDefinition(appInput);
+    if (!app) return false;
+
+    // Built-in app IDs are immutable: a custom record cannot replace their
+    // package, launch URL, label, or actions.
+    if (Object.prototype.hasOwnProperty.call(INITIAL_APP_REGISTRY, app.id)) return false;
+    if (Object.prototype.hasOwnProperty.call(this.registry, app.id)) return false;
+
+    this.registry[app.id] = app;
     try {
       localStorage.setItem('sara_custom_apps', JSON.stringify(Object.values(this.registry)));
-    } catch (e) {}
+    } catch {
+      delete this.registry[app.id];
+      return false;
+    }
+    return true;
   }
 
-  static removeCustomApp(id: string): boolean {
-    const key = id.toLowerCase();
-    if (this.registry[key]) {
+  static removeCustomApp(idInput: string): boolean {
+    const key = typeof idInput === 'string' ? idInput.toLowerCase().trim() : '';
+    if (!key || Object.prototype.hasOwnProperty.call(INITIAL_APP_REGISTRY, key)) {
+      return false;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(this.registry, key)) {
       delete this.registry[key];
       try {
         localStorage.setItem('sara_custom_apps', JSON.stringify(Object.values(this.registry)));
-      } catch (e) {}
+      } catch {
+        return false;
+      }
       return true;
     }
     return false;
