@@ -22,6 +22,7 @@ import { validateStoredAutomations } from '../services/AutomationStorageValidati
 import { validateStoredChatHistory } from '../services/ChatHistoryValidation';
 import { validateStoredMemories, validateStoredMemory } from '../services/MemoryStorageValidation';
 import { DEFAULT_PERSONALITY_SETTINGS, DEFAULT_USER_PROFILE, DEFAULT_VOICE_SETTINGS, normalizePersonalitySettings, normalizeUserProfile, normalizeVoiceSettings } from '../services/PreferencesStorageValidation';
+import { DEFAULT_APP_PERMISSIONS, DEFAULT_GESTURE_MAPPINGS, normalizeAppPermissions, normalizeGestureMappings } from '../services/DeviceStateStorageValidation';
 
 interface SaraContextType {
   // Assistant Status
@@ -928,49 +929,77 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Gesture Mappings
   const [gestureMappings, setGestureMappings] = useState<Record<string, string>>(() => {
-    const saved = localStorage.getItem('sara_gesture_mappings');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+    let saved: string | null = null;
+    try {
+      saved = typeof localStorage !== 'undefined' ? localStorage.getItem('sara_gesture_mappings') : null;
+    } catch {
+      saved = null;
     }
-    return {
-      wave: 'open_chat',
-      heart: 'romantic_mode',
-      thumbs_up: 'toggle_lights',
-      peace: 'open_wardrobe',
-    };
+
+    if (saved) {
+      try {
+        return normalizeGestureMappings(JSON.parse(saved));
+      } catch {
+        // Malformed stored gesture maps fall back to the known default targets.
+      }
+    }
+    return normalizeGestureMappings(DEFAULT_GESTURE_MAPPINGS);
   });
 
   useEffect(() => {
-    localStorage.setItem('sara_gesture_mappings', JSON.stringify(gestureMappings));
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('sara_gesture_mappings', JSON.stringify(normalizeGestureMappings(gestureMappings)));
+      }
+    } catch {
+      // Gesture mappings remain usable if browser storage is disabled or full.
+    }
   }, [gestureMappings]);
 
   const updateGestureMapping = (gesture: string, automationId: string) => {
-    setGestureMappings((prev) => ({ ...prev, [gesture]: automationId }));
+    setGestureMappings((prev) => normalizeGestureMappings({ ...prev, [gesture]: automationId }, prev));
   };
 
   const triggerGestureAction = (gesture: string) => {
     const actionId = gestureMappings[gesture];
+
     if (actionId === 'open_chat') {
       setCurrentEmotion('excited');
       speakText('হ্যালো বাবু! ওয়েভ দেখে আমি দারুণ খুশি হলাম! বলো, কী সাহায্য করব? ❤️', 'excited');
-    } else if (actionId === 'romantic_mode') {
+      addActivityLog({
+        title: `Gesture response: ${gesture} -> ${actionId}`,
+        type: 'automation',
+        service: 'MediaPipe Gesture AI',
+        status: 'SUCCESS',
+        details: 'A local greeting was displayed/spoken. No external device action was executed.',
+      });
+      return;
+    }
+
+    if (actionId === 'romantic_mode') {
       setCurrentEmotion('romantic');
       speakText('হার্ট জেশ্চার পেয়ে গেলাম! আমার মনটা এখন ভালোবাসায় ভরে গেছে। 💖', 'romantic');
-    } else if (actionId === 'toggle_lights') {
-      setCurrentEmotion('happy');
-      speakText('থাম্বস আপ! ঘরের সব লাইট ও স্মার্ট ডিভাইস কন্ট্রোল করা হচ্ছে। ✨', 'happy');
-    } else if (actionId === 'open_wardrobe') {
-      setCurrentEmotion('playful');
-      speakText('পিস সাইন! চলো, তোমার ওয়ার্ডরোব থেকে নতুন পোশাক সিলেক্ট করি। 👗', 'playful');
-    } else {
-      setCurrentEmotion('caring');
-      speakText(`অসাধারণ জেশ্চার! (${gesture}) সফলভাবে রিকগনাইজ করা হলো।`, 'caring');
+      addActivityLog({
+        title: `Gesture response: ${gesture} -> ${actionId}`,
+        type: 'automation',
+        service: 'MediaPipe Gesture AI',
+        status: 'SUCCESS',
+        details: 'A local companion response was displayed/spoken. No external device action was executed.',
+      });
+      return;
     }
+
+    setCurrentEmotion('caring');
+    const failureMessage = actionId
+      ? `Gesture "${gesture}" চিনেছি, কিন্তু "${actionId}"-এর জন্য connected executor নেই। কোনো external action চালানো হয়নি।`
+      : `Gesture "${gesture}"-এর কোনো valid mapping নেই। কোনো action চালানো হয়নি।`;
+    speakText(failureMessage, 'caring');
     addActivityLog({
-      title: `Gesture Detected & Executed: ${gesture} -> ${actionId || 'Default'}`,
+      title: `Gesture not executed: ${gesture} -> ${actionId || 'Unmapped'}`,
       type: 'automation',
       service: 'MediaPipe Gesture AI',
-      status: 'SUCCESS',
+      status: 'FAILED',
+      details: failureMessage,
     });
   };
 
@@ -1417,23 +1446,40 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // 12.5 Interactive User Permissions State & Handlers
   const [permissions, setPermissions] = useState<AppPermissions>(() => {
-    const saved = localStorage.getItem('sara_app_permissions');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return {
-      microphone: 'prompt',
-      location: 'prompt',
-      notifications: typeof Notification !== 'undefined' && Notification.permission === 'granted' ? 'granted' : 'default',
-      wakeWord: true,
-      persistentMemory: true,
-      audioPlayback: true,
-      floatingOverlay: true,
+    const defaultPermissions: AppPermissions = {
+      ...DEFAULT_APP_PERMISSIONS,
+      notifications: typeof Notification !== 'undefined' && Notification.permission === 'granted'
+        ? 'granted'
+        : typeof Notification !== 'undefined' && Notification.permission === 'denied'
+          ? 'denied'
+          : 'default',
     };
+
+    let saved: string | null = null;
+    try {
+      saved = typeof localStorage !== 'undefined' ? localStorage.getItem('sara_app_permissions') : null;
+    } catch {
+      saved = null;
+    }
+
+    if (saved) {
+      try {
+        return normalizeAppPermissions(JSON.parse(saved), defaultPermissions);
+      } catch {
+        // Malformed stored settings fall back to browser-derived defaults.
+      }
+    }
+    return defaultPermissions;
   });
 
   useEffect(() => {
-    localStorage.setItem('sara_app_permissions', JSON.stringify(permissions));
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('sara_app_permissions', JSON.stringify(normalizeAppPermissions(permissions)));
+      }
+    } catch {
+      // Permission settings remain available in memory when storage is disabled or full.
+    }
   }, [permissions]);
 
   const togglePermission = (key: keyof AppPermissions, value?: boolean) => {
@@ -1446,7 +1492,7 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         updated[key] = typeof value === 'boolean' ? value : (!updated[key] as any);
       }
-      return updated;
+      return normalizeAppPermissions(updated, prev);
     });
   };
 
