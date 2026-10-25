@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 import { useSara } from '../../context/SaraContext';
 import { MoodType, MoodRecord } from '../../types';
+import { safeLocalStorageGetItem, safeLocalStorageSetItem } from '../../services/SafeLocalStorage';
+import { calculateMoodStreak, normalizeMoodNote, validateStoredMoodHistory } from '../../services/MoodHistoryValidation';
 
 interface MoodOption {
   type: MoodType;
@@ -91,80 +93,65 @@ const DAILY_HABITS = [
 export const MoodHabitTracker: React.FC = () => {
   const { userProfile, speakText } = useSara();
 
-  // Load and manage mood records from localStorage with 7 pre-seeded days for vibrant visual chart
+  // Restore only actual, validated user check-ins. No history is fabricated for new users.
   const [moodRecords, setMoodRecords] = useState<MoodRecord[]>(() => {
-    const saved = localStorage.getItem('sara_mood_history');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.warn('Failed to parse mood history:', e);
-      }
-    }
-    // Default 7 days of realistic mood records
-    const today = new Date();
-    const records: MoodRecord[] = [];
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
-      const dayName = i === 0 ? 'Today' : days[d.getDay()];
-      const dateStr = d.toISOString().split('T')[0];
-
-      // Staged realistic scores
-      const scores = [3, 4, 3, 5, 4, 4, 5];
-      const moods: MoodType[] = ['calm', 'happy', 'calm', 'radiant', 'happy', 'happy', 'radiant'];
-      const score = scores[6 - i];
-      const mood = moods[6 - i];
-
-      records.push({
-        id: `mood_${dateStr}`,
-        date: dateStr,
-        dayName,
-        mood,
-        score,
-        note: i === 0 ? 'Loving our conversations with Sara!' : 'Productive and peaceful day.',
-        habitsCompleted: i === 0 ? ['talk_sara', 'hydration'] : ['talk_sara', 'hydration', 'exercise'],
-      });
-    }
-    return records;
+    return validateStoredMoodHistory(safeLocalStorageGetItem('sara_mood_history'));
   });
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayRecord = useMemo(
+    () => moodRecords.find((record) => record.date === todayStr),
+    [moodRecords, todayStr],
+  );
 
-  const todayRecord = useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    return moodRecords.find((r) => r.date === todayStr) || moodRecords[moodRecords.length - 1];
-  }, [moodRecords]);
-
-  const [selectedMood, setSelectedMood] = useState<MoodType>(todayRecord?.mood || 'radiant');
+  const [selectedMood, setSelectedMood] = useState<MoodType | null>(todayRecord?.mood ?? null);
   const [moodNote, setMoodNote] = useState<string>(todayRecord?.note || '');
-  const [habitsCompleted, setHabitsCompleted] = useState<string[]>(todayRecord?.habitsCompleted || ['talk_sara', 'hydration']);
-  const [showSavedFeedback, setShowSavedFeedback] = useState<boolean>(false);
+  const [habitsCompleted, setHabitsCompleted] = useState<string[]>(todayRecord?.habitsCompleted || []);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'storage-unavailable' | 'choose-mood' | null>(null);
 
-  // Save changes to state & localStorage
-  const handleSaveMood = (newMood = selectedMood) => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const moodConfig = MOOD_OPTIONS.find((m) => m.type === newMood) || MOOD_OPTIONS[0];
-
-    const updated = moodRecords.map((r) => {
-      if (r.date === todayStr) {
-        return {
-          ...r,
-          mood: newMood,
-          score: moodConfig.score,
-          note: moodNote,
-          habitsCompleted,
-        };
-      }
-      return r;
-    });
-
+  const persistMoodRecords = (updated: MoodRecord[]) => {
     setMoodRecords(updated);
-    localStorage.setItem('sara_mood_history', JSON.stringify(updated));
-    setShowSavedFeedback(true);
-    setTimeout(() => setShowSavedFeedback(false), 2000);
+    const persisted = safeLocalStorageSetItem('sara_mood_history', JSON.stringify(updated));
+    setSaveStatus(persisted ? 'saved' : 'storage-unavailable');
+    setTimeout(() => setSaveStatus(null), 2000);
+  };
 
-    // Sara speaks an empathetic response
+  const createTodayRecord = (
+    mood: MoodType,
+    note: string,
+    habits: string[],
+  ): MoodRecord => {
+    const moodConfig = MOOD_OPTIONS.find((option) => option.type === mood) || MOOD_OPTIONS[0];
+    const validHabits = DAILY_HABITS.map((habit) => habit.id).filter((habitId) => habits.includes(habitId));
+    return {
+      id: `mood_${todayStr}`,
+      date: todayStr,
+      dayName: 'Today',
+      mood,
+      score: moodConfig.score,
+      note: normalizeMoodNote(note),
+      habitsCompleted: [...new Set(validHabits)],
+    };
+  };
+
+  const handleSaveMood = (newMood: MoodType | null = selectedMood) => {
+    if (!newMood) {
+      setSaveStatus('choose-mood');
+      setTimeout(() => setSaveStatus(null), 2000);
+      return;
+    }
+
+    const todayRecord = createTodayRecord(newMood, moodNote, habitsCompleted);
+    const updated = [
+      ...moodRecords.filter((record) => record.date !== todayStr),
+      todayRecord,
+    ].sort((left, right) => left.date.localeCompare(right.date));
+
+    persistMoodRecords(updated);
+    setSelectedMood(newMood);
+    setMoodNote(todayRecord.note || '');
+    setHabitsCompleted(todayRecord.habitsCompleted);
+
+    // Sara speaks an empathetic response after the user records a mood.
     if (newMood === 'radiant') {
       speakText('তুমি আজকে এত ভালো আছো দেখে আমার হৃদয়টা ভরে গেল বাবু! ❤️ সবসময় এভাবে মিষ্টি হাসি নিয়ে থেকো।', 'romantic');
     } else if (newMood === 'happy') {
@@ -179,28 +166,30 @@ export const MoodHabitTracker: React.FC = () => {
   };
 
   const toggleHabit = (habitId: string) => {
-    let next: string[];
-    if (habitsCompleted.includes(habitId)) {
-      next = habitsCompleted.filter((id) => id !== habitId);
-    } else {
-      next = [...habitsCompleted, habitId];
-    }
+    if (!DAILY_HABITS.some((habit) => habit.id === habitId)) return;
+
+    const next = habitsCompleted.includes(habitId)
+      ? habitsCompleted.filter((id) => id !== habitId)
+      : [...habitsCompleted, habitId];
     setHabitsCompleted(next);
 
-    const todayStr = new Date().toISOString().split('T')[0];
-    const updated = moodRecords.map((r) => {
-      if (r.date === todayStr) {
-        return { ...r, habitsCompleted: next };
-      }
-      return r;
-    });
-    setMoodRecords(updated);
-    localStorage.setItem('sara_mood_history', JSON.stringify(updated));
+    if (!selectedMood) {
+      setSaveStatus('choose-mood');
+      setTimeout(() => setSaveStatus(null), 2000);
+      return;
+    }
+
+    const todayRecord = createTodayRecord(selectedMood, moodNote, next);
+    const updated = [
+      ...moodRecords.filter((record) => record.date !== todayStr),
+      todayRecord,
+    ].sort((left, right) => left.date.localeCompare(right.date));
+    persistMoodRecords(updated);
   };
 
   // Recharts Chart Data
   const chartData = useMemo(() => {
-    return moodRecords.map((r) => ({
+    return moodRecords.slice(-7).map((r) => ({
       day: r.dayName,
       score: r.score,
       mood: r.mood,
@@ -208,6 +197,11 @@ export const MoodHabitTracker: React.FC = () => {
       note: r.note,
     }));
   }, [moodRecords]);
+
+  const moodStreak = useMemo(
+    () => calculateMoodStreak(moodRecords, Date.now()),
+    [moodRecords, todayStr],
+  );
 
   // Habit consistency calculation
   const totalPossibleHabits = moodRecords.length * DAILY_HABITS.length;
