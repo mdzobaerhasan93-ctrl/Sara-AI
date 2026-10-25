@@ -9,7 +9,7 @@ const sanitized = buildSandboxedPreviewHtml(original);
 
 assert.ok(sanitized.startsWith('<!doctype html>'));
 assert.ok(sanitized.indexOf('Content-Security-Policy') < sanitized.indexOf('<title>'));
-assert.match(sanitized, /default-src &#39;none&#39;/);
+assert.match(sanitized, /default-src 'none'/);
 assert.match(PREVIEW_CONTENT_SECURITY_POLICY, /connect-src 'none'/);
 assert.match(PREVIEW_CONTENT_SECURITY_POLICY, /form-action 'none'/);
 assert.match(PREVIEW_CONTENT_SECURITY_POLICY, /frame-src 'none'/);
