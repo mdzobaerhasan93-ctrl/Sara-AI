@@ -49,6 +49,9 @@ export function validateMapsGroundingRequest(input: unknown): MapsGroundingValid
   if (query.length > MAX_QUERY_LENGTH) {
     return { success: false, error: `Search query must be ${MAX_QUERY_LENGTH} characters or fewer.` };
   }
+  if (/[\r\n]/.test(query)) {
+    return { success: false, error: 'Search query must be a single line.' };
+  }
   if (CONTROL_CHARACTERS.test(query)) {
     return { success: false, error: 'Search query contains unsupported control characters.' };
   }
