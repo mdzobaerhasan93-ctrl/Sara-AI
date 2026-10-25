@@ -3,112 +3,8 @@ import { useSara } from '../../context/SaraContext';
 import { RealHuman3DAvatar } from './RealHuman3DAvatar';
 import { Check, Sparkles, ShoppingBag, Shirt, Glasses, Lock, Flame } from 'lucide-react';
 
-interface WardrobeItem {
-  id: string;
-  name: string;
-  bengaliName: string;
-  type: 'outfit' | 'accessory';
-  cost: number;
-  color: string;
-  description: string;
-  icon: string;
-}
-
-export const WARDROBE_ITEMS: WardrobeItem[] = [
-  // Outfits
-  {
-    id: 'cyber_jacket',
-    name: 'Cyber Neon Jacket',
-    bengaliName: 'সাইবার নিয়ন জ্যাকেট',
-    type: 'outfit',
-    cost: 0,
-    color: '#ec4899',
-    description: 'Sleek cyber jacket with glowing pink neon trim.',
-    icon: '🧥',
-  },
-  {
-    id: 'silk_saree',
-    name: 'Traditional Red Silk Saree',
-    bengaliName: 'লাল বেনারসি শাড়ি',
-    type: 'outfit',
-    cost: 150,
-    color: '#dc2626',
-    description: 'Exquisite red Banarasi silk saree with gold embroidery.',
-    icon: '🥻',
-  },
-  {
-    id: 'royal_gown',
-    name: 'Royal Velvet Gown',
-    bengaliName: 'রয়েল ভেলভেট গাউন',
-    type: 'outfit',
-    cost: 300,
-    color: '#7c3aed',
-    description: 'Majestic deep purple velvet gown fit for royalty.',
-    icon: '👗',
-  },
-  {
-    id: 'casual_hoodie',
-    name: 'Cozy Pink Hoodie',
-    bengaliName: 'গোলাপি হুডি',
-    type: 'outfit',
-    cost: 50,
-    color: '#f43f5e',
-    description: 'Comfortable oversized soft pink hoodie.',
-    icon: '👕',
-  },
-
-  // Accessories
-  {
-    id: 'none',
-    name: 'No Accessory',
-    bengaliName: 'কোনোটি না',
-    type: 'accessory',
-    cost: 0,
-    color: '#64748b',
-    description: 'Natural pristine look without extra accessories.',
-    icon: '✨',
-  },
-  {
-    id: 'crown',
-    name: 'Royal Diamond Crown',
-    bengaliName: 'হীরার মুকুট',
-    type: 'accessory',
-    cost: 500,
-    color: '#fbbf24',
-    description: 'Sparkling diamond tiara for radiant majesty.',
-    icon: '👑',
-  },
-  {
-    id: 'visor',
-    name: 'Cyber AR Visor',
-    bengaliName: 'সাইবার ভিজর',
-    type: 'accessory',
-    cost: 200,
-    color: '#06b6d4',
-    description: 'Futuristic holographic HUD visor with live telemetry.',
-    icon: '🕶️',
-  },
-  {
-    id: 'necklace',
-    name: 'Heart Gold Necklace',
-    bengaliName: 'সোনার হার ও লকেট',
-    type: 'accessory',
-    cost: 100,
-    color: '#f59e0b',
-    description: 'Golden chain with glowing ruby heart pendant.',
-    icon: '📿',
-  },
-  {
-    id: 'garland',
-    name: 'Bengali Floral Mala',
-    bengaliName: 'সুবাসিত ফুলের মালা',
-    type: 'accessory',
-    cost: 75,
-    color: '#ffffff',
-    description: 'Fragrant white rajnigandha and marigold garland.',
-    icon: '🌸',
-  },
-];
+export { WARDROBE_ITEMS } from '../../services/WardrobeInventory';
+import { WARDROBE_ITEMS, type WardrobeItem } from '../../services/WardrobeInventory';
 
 export const WardrobeView: React.FC = () => {
   const {
@@ -147,7 +43,7 @@ export const WardrobeView: React.FC = () => {
       }
     } else {
       if (coinBalance >= item.cost) {
-        const success = buyWardrobeItem(item.id, item.type, item.cost);
+        const success = buyWardrobeItem(item.id, item.type);
         if (success) {
           showNotice(`Successfully unlocked & equipped ${item.name}! 🎉`);
         }
