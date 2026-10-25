@@ -72,8 +72,8 @@ export function extractExplicitActionPayload(command: unknown): string | null {
   }
 
   const labeledPatterns = [
-    /(?:message|text|comment|caption|status|বার্তা|মেসেজ|কমেন্ট|ক্যাপশন|স্ট্যাটাস)\s*[:：]\s*(.{1,500})$/i,
-    /(?:লিখে\s*দাও|লিখুন|বলবে)\s+(.{1,500})$/i,
+    /(?:message|text|comment|caption|status|বার্তা|মেসেজ|কমেন্ট|ক্যাপশন|স্ট্যাটাস)\s*[:：]\s*(.{1,5000})$/i,
+    /(?:লিখে\s*দাও|লিখুন|বলবে)\s+(.{1,5000})$/i,
   ];
 
   for (const pattern of labeledPatterns) {
