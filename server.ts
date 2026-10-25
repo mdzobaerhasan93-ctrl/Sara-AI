@@ -8,6 +8,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { decideActionExecutionRequest } from './src/services/ActionExecutionPolicy.ts';
 import { dispatchGitHubWorkflow } from './src/services/GitHubActionsService.ts';
 import { InMemoryRateLimiter } from './src/services/ApiRateLimit.ts';
+import { validateHighThinkingRequest } from './src/services/HighThinkingRequestValidation.ts';
 import { fetchCurrentWeather, validateWeatherCoordinates } from './src/services/WeatherService.ts';
 
 dotenv.config();
@@ -471,44 +472,48 @@ Requirements:
 // 2. HIGH THINKING MODE (gemini-3.1-pro-preview with HIGH Thinking)
 // -------------------------------------------------------------
 app.post('/api/think', rateLimitMiddleware('think', apiRateLimiters.think), async (req, res) => {
+  const validation = validateHighThinkingRequest(req.body);
+  if (!validation.success) {
+    return res.status(400).json({
+      success: false,
+      status: 'INVALID_THINKING_REQUEST',
+      error: validation.error,
+    });
+  }
+
+  const { prompt, systemInstruction } = validation.data;
+
   try {
-    const { prompt, systemInstruction } = req.body;
     const ai = getAIClient(req);
-
-    try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.1-pro-preview',
-        contents: prompt,
-        config: {
-          systemInstruction: systemInstruction || 'You are Sara AI in Deep Thinking Mode. Provide thorough, deeply reasoned analysis with clear steps.',
-          thinkingConfig: {
-            thinkingLevel: ThinkingLevel.HIGH,
-          },
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.1-pro-preview',
+      contents: prompt,
+      config: {
+        systemInstruction: systemInstruction || 'You are Sara AI in High Thinking Mode. Provide careful, thorough analysis with clear, useful conclusions. Do not claim to have executed tasks or verified external facts unless that actually occurred.',
+        thinkingConfig: {
+          thinkingLevel: ThinkingLevel.HIGH,
         },
-      });
+      },
+    });
 
-      if (response.text) {
-        return res.json({
-          success: true,
-          text: response.text,
-        });
-      }
-    } catch (apiErr: any) {
-      console.warn('Gemini 3.1 Pro Thinking API warning:', apiErr?.message?.slice(0, 80));
+    if (typeof response.text === 'string' && response.text.trim()) {
+      return res.json({
+        success: true,
+        text: response.text,
+      });
     }
 
-    // High Reasoning synthesis fallback
-    const deepAnalysis = `## 🧠 Sara High-Reasoning Analysis\n\n**১. মূল প্রতিপাদ্য (Core Premise):**\nবিশ্লেষণের কেন্দ্রবিন্দু: "${prompt}"। এই ক্ষেত্রে পদ্ধতিগত সমাধান এবং প্রেক্ষাপটের সমন্বয় অত্যন্ত গুরুত্বপূর্ণ।\n\n**২. কাঠামোগত কারণ ও ফ্যাক্টরসমূহ (Key Dimensions):**\n- **প্রথম স্তর:** মৌলিক নীতি ও ধারণাগত কাঠামোর স্পষ্টীকরণ।\n- **দ্বিতীয় স্তর:** বাস্তবমুখী সীমাবদ্ধতা এবং নিরাপত্তা যাচাইকরণ।\n- **তৃতীয় স্তর:** দীর্ঘমেয়াদী প্রভাব ও টেকসই ফলাফল মূল্যায়ন।\n\n**৩. সিদ্ধান্ত ও পদক্ষেপ (Synthesis & Recommendation):**\nধাপে ধাপে অগ্রসর হোন এবং প্রতিটি ফলাফলের ডেটা যাচাই করুন। সারা সবসময় আপনার সাথে কাজ করতে প্রস্তুত ❤️`;
-
-    res.json({
-      success: true,
-      text: deepAnalysis,
+    return res.status(502).json({
+      success: false,
+      status: 'THINKING_PROVIDER_EMPTY_RESPONSE',
+      error: 'High Thinking provider returned no analysis. No fallback analysis was generated.',
     });
   } catch (error: any) {
-    console.error('Thinking error:', error);
-    res.status(500).json({
+    console.warn('High Thinking provider request failed:', error?.message?.slice(0, 100));
+    return res.status(502).json({
       success: false,
-      error: error?.message || 'Thinking analysis failed.',
+      status: 'THINKING_PROVIDER_ERROR',
+      error: 'High Thinking is temporarily unavailable. No analysis was generated; please retry shortly.',
     });
   }
 });
