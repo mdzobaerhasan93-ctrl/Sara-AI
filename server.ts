@@ -377,7 +377,7 @@ Requirements:
       });
 
       const responseText = response.text || '';
-      const cleanJson = responseText.replace(/^\`\`\`json\s*/, '').replace(/\`\`\`\s*$/, '').trim();
+      const cleanJson = responseText.trim();
       const parsed: unknown = JSON.parse(cleanJson);
       if (
         parsed &&
