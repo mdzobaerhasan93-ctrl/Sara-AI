@@ -20,6 +20,7 @@ import { AIAgentService } from '../services/AIAgentService';
 import { planAutomationExecution } from '../services/AutomationExecutionPlan';
 import { validateStoredAutomations } from '../services/AutomationStorageValidation';
 import { validateStoredChatHistory } from '../services/ChatHistoryValidation';
+import { validateStoredMemories, validateStoredMemory } from '../services/MemoryStorageValidation';
 
 interface SaraContextType {
   // Assistant Status
@@ -301,9 +302,21 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // 8. Memories
   const [memories, setMemories] = useState<MemoryItem[]>(() => {
-    const saved = localStorage.getItem('sara_memories');
+    let saved: string | null = null;
+    try {
+      saved = typeof localStorage !== 'undefined' ? localStorage.getItem('sara_memories') : null;
+    } catch {
+      saved = null;
+    }
+
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { }
+      try {
+        const parsed: unknown = JSON.parse(saved);
+        const validated = validateStoredMemories(parsed);
+        if (validated !== null) return validated;
+      } catch {
+        // Malformed saved JSON falls back to the safe default memories below.
+      }
     }
     return [
       {
@@ -331,18 +344,27 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   useEffect(() => {
-    localStorage.setItem('sara_memories', JSON.stringify(memories));
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const safeMemories = validateStoredMemories(memories) ?? [];
+        localStorage.setItem('sara_memories', JSON.stringify(safeMemories));
+      }
+    } catch {
+      // Memory remains usable if browser storage is disabled or full.
+    }
   }, [memories]);
 
   const addMemory = (category: MemoryItem['category'], content: string) => {
-    const newMem: MemoryItem = {
+    const candidate: MemoryItem = {
       id: `mem_${Date.now()}`,
       category,
       content,
       createdAt: new Date().toISOString().split('T')[0],
       active: true,
     };
-    setMemories((prev) => [newMem, ...prev]);
+    const newMem = validateStoredMemory(candidate);
+    if (!newMem) return;
+    setMemories((prev) => validateStoredMemories([newMem, ...prev]) ?? [newMem]);
     addActivityLog({
       title: `New memory saved: [${category}]`,
       type: 'action',
