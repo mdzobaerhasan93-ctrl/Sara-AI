@@ -119,3 +119,34 @@ export function normalizeDailyAffirmationResult(input: unknown): NormalizedAffir
     audioScript: audioScript || quoteBn,
   };
 }
+
+export function buildFallbackDailyAffirmation(
+  userNameInput: string,
+  loveMode: boolean,
+  timeOfDay: DailyAffirmationRequest['timeOfDay'],
+): NormalizedAffirmation {
+  const userName = normalizeSingleLine(userNameInput, MAX_USER_NAME_LENGTH) || 'বাবু';
+  const greetingByTime: Record<DailyAffirmationRequest['timeOfDay'], string> = {
+    morning: `শুভ সকাল ${userName}! আজকের দিনটি সুন্দর হোক। ❤️`,
+    afternoon: `শুভ দুপুর ${userName}! কাজের ফাঁকে একটু বিশ্রাম নিতে ভুলো না। ❤️`,
+    evening: `শুভ সন্ধ্যা ${userName}! দিন শেষে নিজের যত্ন নিও। ❤️`,
+    night: `শুভ রাত্রি ${userName}! বিশ্রাম নাও, আর নিজের যত্ন রেখো। ❤️`,
+    daily: `প্রিয় ${userName}, তোমার দিনের জন্য রইল আন্তরিক শুভকামনা। ❤️`,
+  };
+
+  const quoteBn = loveMode
+    ? 'তুমি যতটা ভাবছো তার চেয়েও অনেক বেশি শক্তিশালী সোনা। ছোট ছোট পদক্ষেপও তোমাকে এগিয়ে নিয়ে যায়। ❤️'
+    : 'ক্লান্ত লাগলে একটু বিশ্রাম নাও, কিন্তু নিজের ওপর বিশ্বাস হারিয়ো না। ছোট ছোট পদক্ষেপও তোমাকে এগিয়ে নিয়ে যায়।';
+  const quoteEn = loveMode
+    ? 'You are stronger than you think. Even small steps can help you move forward. ❤️'
+    : 'Rest when you are weary, but do not lose faith in yourself. Small steps still move you forward.';
+
+  return {
+    quoteBn,
+    quoteEn,
+    greeting: greetingByTime[timeOfDay],
+    emotion: loveMode ? 'romantic' : 'caring',
+    tag: loveMode ? 'Strength & Love' : 'Care & Hope',
+    audioScript: `${greetingByTime[timeOfDay]} ${quoteBn}`.slice(0, MAX_AFFIRMATION_TEXT_LENGTH),
+  };
+}
