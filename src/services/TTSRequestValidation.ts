@@ -10,7 +10,7 @@ export type TTSValidationResult =
   | { success: true; data: ValidatedTTSRequest }
   | { success: false; error: string };
 
-const MAX_INPUT_TEXT_LENGTH = 2_000;
+const MAX_INPUT_TEXT_LENGTH = 400;
 const MAX_STYLE_LENGTH = 200;
 const VOICES = new Set<TTSVoice>(['Zephyr', 'Kore', 'Puck', 'Fenrir', 'Aoede']);
 const CONTROL_CHARACTERS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
