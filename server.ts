@@ -7,6 +7,7 @@ import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { WebSocketServer, WebSocket } from 'ws';
 import { decideActionExecutionRequest } from './src/services/ActionExecutionPolicy.ts';
 import { dispatchGitHubWorkflow } from './src/services/GitHubActionsService.ts';
+import { InMemoryRateLimiter } from './src/services/ApiRateLimit.ts';
 
 dotenv.config();
 
@@ -18,6 +19,43 @@ const server = http.createServer(app);
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.use(express.json({ limit: '15mb' }));
+const apiRateLimiters = {
+  chat: new InMemoryRateLimiter(20, 60_000),
+  agentSolve: new InMemoryRateLimiter(4, 60_000),
+  think: new InMemoryRateLimiter(10, 60_000),
+  dailyAffirmation: new InMemoryRateLimiter(10, 60_000),
+  weather: new InMemoryRateLimiter(30, 60_000),
+  tts: new InMemoryRateLimiter(20, 60_000),
+  mapsGrounding: new InMemoryRateLimiter(10, 60_000),
+};
+
+function rateLimitMiddleware(
+  routeName: string,
+  limiter: InMemoryRateLimiter,
+): express.RequestHandler {
+  return (req, res, next) => {
+    // req.ip respects Express's configured trust-proxy policy. Do not read
+    // x-forwarded-for directly; it is user-spoofable without trusted proxies.
+    const key = req.ip || req.socket.remoteAddress || 'unknown';
+    const decision = limiter.consume(key);
+
+    res.setHeader('X-RateLimit-Limit', String(decision.limit));
+    res.setHeader('X-RateLimit-Remaining', String(decision.remaining));
+    res.setHeader('X-RateLimit-Reset', String(Math.ceil(decision.resetAt / 1000)));
+
+    if (!decision.allowed) {
+      res.setHeader('Retry-After', String(decision.retryAfterSeconds));
+      return res.status(429).json({
+        success: false,
+        status: 'TOO_MANY_REQUESTS',
+        error: `Too many requests to ${routeName}. Please retry after ${decision.retryAfterSeconds} seconds.`,
+      });
+    }
+
+    return next();
+  };
+}
+
 
 // Initialize GoogleGenAI server-side with telemetry header and custom API key support
 const getAIClient = (req?: express.Request) => {
@@ -39,7 +77,7 @@ const getAIClient = (req?: express.Request) => {
 // -------------------------------------------------------------
 // 1. CHAT API (Multi-turn, Persona-driven, Emotion-tagged)
 // -------------------------------------------------------------
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', rateLimitMiddleware('chat', apiRateLimiters.chat), async (req, res) => {
   try {
     const {
       messages = [],
@@ -402,7 +440,7 @@ function generateAutonomousFallback(task: string) {
 // -------------------------------------------------------------
 // 2.5 AUTONOMOUS MULTI-MODEL AI AGENT & APP BUILDER
 // -------------------------------------------------------------
-app.post('/api/agent-solve', async (req, res) => {
+app.post('/api/agent-solve', rateLimitMiddleware('agent-solve', apiRateLimiters.agentSolve), async (req, res) => {
   try {
     const { task, taskType = 'general', userName = 'Zobaer' } = req.body;
     if (!task || typeof task !== 'string') {
@@ -481,7 +519,7 @@ Respond ONLY with valid JSON. No markdown backticks around the JSON.`;
 // -------------------------------------------------------------
 // 2. HIGH THINKING MODE (gemini-3.1-pro-preview with HIGH Thinking)
 // -------------------------------------------------------------
-app.post('/api/think', async (req, res) => {
+app.post('/api/think', rateLimitMiddleware('think', apiRateLimiters.think), async (req, res) => {
   try {
     const { prompt, systemInstruction } = req.body;
     const ai = getAIClient(req);
@@ -527,7 +565,7 @@ app.post('/api/think', async (req, res) => {
 // -------------------------------------------------------------
 // 2.7 PERSONALIZED DAILY AFFIRMATION (Gemini 3.8 Flash)
 // -------------------------------------------------------------
-app.post('/api/daily-affirmation', async (req, res) => {
+app.post('/api/daily-affirmation', rateLimitMiddleware('daily-affirmation', apiRateLimiters.dailyAffirmation), async (req, res) => {
   try {
     const { userName = 'বাবু', loveMode = true, timeOfDay = 'morning' } = req.body;
     const ai = getAIClient(req);
@@ -627,7 +665,7 @@ Respond ONLY with valid JSON with these 6 fields. No markdown backticks.`;
 // -------------------------------------------------------------
 // 3. TEXT-TO-SPEECH (Authentic Google Bengali & English Speech Engine)
 // -------------------------------------------------------------
-app.get('/api/weather', async (req, res) => {
+app.get('/api/weather', rateLimitMiddleware('weather', apiRateLimiters.weather), async (req, res) => {
   try {
     const lat = req.query.lat || '23.8103';
     const lon = req.query.lon || '90.4125';
@@ -693,7 +731,7 @@ async function fetchGoogleTTSAudio(text: string, lang = 'bn'): Promise<string | 
   return null;
 }
 
-app.post('/api/tts', async (req, res) => {
+app.post('/api/tts', rateLimitMiddleware('tts', apiRateLimiters.tts), async (req, res) => {
   try {
     const { text, voice = 'Zephyr', style } = req.body;
     if (!text) {
@@ -787,7 +825,7 @@ app.post('/api/tts', async (req, res) => {
 // -------------------------------------------------------------
 // 4. MAPS GROUNDING (gemini-3.5-flash with googleMaps tool)
 // -------------------------------------------------------------
-app.post('/api/maps-grounding', async (req, res) => {
+app.post('/api/maps-grounding', rateLimitMiddleware('maps-grounding', apiRateLimiters.mapsGrounding), async (req, res) => {
   try {
     const { query, latitude, longitude } = req.body;
     const ai = getAIClient(req);
