@@ -252,150 +252,76 @@ function generateSaraBengaliCompanionResponse(
 }
 
 // Autonomous Multi-Model Fallback App Generator
-function generateAutonomousFallback(task: string) {
-  const q = task.toLowerCase();
-  const isGoogleStudio = q.includes('গুগল স্টুডিও') || q.includes('google studio') || q.includes('app') || q.includes('অ্যাপ');
-  const isCalculator = q.includes('calculator') || q.includes('ক্যালকুলেটর');
-  const isWeather = q.includes('weather') || q.includes('আবহাওয়া') || q.includes('ওয়েদার');
+function generateAutonomousFallback(_task: string) {
+  const title = 'SARA Browser Prototype Sample';
+  const bengaliTitle = 'সারা ব্রাউজার প্রোটোটাইপ নমুনা';
+  const desc = 'Gemini preview পাওয়া না গেলে এই built-in sample দেখানো হয়। এটি user-এর requested app-এর implementation নয়; build, automated test বা deployment করা হয়নি।';
 
-  let title = 'Autonomous Full-Stack AI Application';
-  let bengaliTitle = 'স্বয়ংক্রিয় মাল্টি-মডেল এআই অ্যাপ';
-  let desc = `ইউজারের নির্দেশ "${task}" বিশ্লেষণ করে বিভিন্ন এআই মডেলের সহায়তায় সম্পূর্ণ রেসপনসিভ অ্যাপ তৈরি করা হয়েছে।`;
-  let spoken = `বাবু! তোমার নির্দেশ অনুযায়ী আমি বিভিন্ন এআই মডেল থেকে সমস্ত ফিচার ও আর্কিটেকচার নিয়ে স্বয়ংক্রিয়ভাবে একটি সম্পূর্ণ অ্যাপ তৈরি করেছি ❤️ লাইভ প্রিভিউতে তুমি সরাসরি এটি ব্যবহার করতে পারো!`;
-
-  if (isGoogleStudio) {
-    title = 'Google AI Studio — Smart App Generator & Testing Suite';
-    bengaliTitle = 'গুগল এআই স্টুডিও ইন্টেলিজেন্ট অ্যাপ ও প্রম্পট বিল্ডার';
-    desc = 'গুগল এআই স্টুডিও আর্কিটেকচার সমন্বিত একটি ফুল-স্ট্যাক ইন্টারেক্টিভ অ্যাপ। এতে জেমিনি প্রম্পটিং, রিয়েল-টাইম কোড প্রিভিউ এবং কম্পোনেন্ট টেস্টিং সুবিধা রয়েছে।';
-  } else if (isCalculator) {
-    title = 'Quantum Matrix Scientific Calculator';
-    bengaliTitle = 'কোয়ান্টাম সাইন্টিফিক ক্যালকুলেটর';
-    desc = 'হিসাব-নিকাশ, হিস্ট্রি লগ এবং মেমোরি ফাংশন সমৃদ্ধ আধুনিক সাইন্টিফিক ক্যালকুলেটর।';
-  } else if (isWeather) {
-    title = 'Atmosphere 360 Weather Intelligence';
-    bengaliTitle = 'অ্যাটমোসফিয়ার ৩৬০ লাইভ ওয়েদার ড্যাশবোর্ড';
-    desc = 'তাপমাত্রা, আর্দ্রতা, বাতাসের গতি এবং ৫ দিনের পূর্বাভাস সম্বলিত স্মার্ট ওয়েদার অ্যাপ।';
-  }
-
-  const liveHtml = `<!DOCTYPE html>
-<html lang="en">
+  const liveHtml = `<!doctype html>
+<html lang="bn">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SARA Browser Prototype Sample</title>
   <style>
-    body { font-family: 'Outfit', sans-serif; }
-    .glass { background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(16px); border: 1px solid rgba(244, 114, 182, 0.25); }
-    .glow-btn { box-shadow: 0 0 20px rgba(236, 72, 153, 0.4); }
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+    body { margin: 0; min-height: 100vh; padding: 24px; box-sizing: border-box; background: #0b1020; color: #f8fafc; }
+    main { max-width: 680px; margin: 5vh auto; padding: 24px; border: 1px solid #374151; border-radius: 20px; background: #111827; }
+    h1 { font-size: clamp(1.25rem, 4vw, 2rem); margin-top: 0; }
+    p { line-height: 1.6; color: #cbd5e1; }
+    .notice { padding: 12px; border-radius: 12px; border: 1px solid #b45309; background: #451a03; color: #fde68a; }
+    form { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+    input { flex: 1 1 220px; min-width: 0; padding: 10px; border: 1px solid #4b5563; border-radius: 10px; background: #030712; color: white; }
+    button { padding: 10px 14px; border: 0; border-radius: 10px; background: #7c3aed; color: white; font-weight: 700; cursor: pointer; }
+    ul { padding-left: 20px; }
+    li { margin: 8px 0; overflow-wrap: anywhere; }
+    small { color: #9ca3af; }
   </style>
 </head>
-<body class="bg-gradient-to-br from-[#070617] via-[#0f0c29] to-[#1e1035] text-slate-100 min-h-screen p-4 flex flex-col items-center justify-center">
-  <div class="glass w-full max-w-xl rounded-3xl p-6 shadow-2xl space-y-5 border border-pink-500/30">
-    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center text-xl shadow-lg">
-          🚀
-        </div>
-        <div>
-          <h1 class="text-lg font-bold text-white">${title}</h1>
-          <p class="text-xs text-pink-400 font-medium">${bengaliTitle}</p>
-        </div>
-      </div>
-      <span class="text-[10px] px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-mono border border-emerald-500/40">
-        ● LIVE SANDBOX
-      </span>
-    </div>
-
-    <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
-      <div class="flex items-center justify-between text-xs text-slate-400">
-        <span>ইউজার নির্দেশ (User Prompt):</span>
-        <span class="text-pink-300 font-medium">SARA Multi-Model AI</span>
-      </div>
-      <p class="text-sm font-semibold text-slate-200 bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
-        "${task}"
-      </p>
-    </div>
-
-    <!-- Interactive Counter & Task Sandbox Area -->
-    <div class="space-y-3">
-      <label class="block text-xs font-semibold text-slate-300">ইন্টারেক্টিভ টেস্ট ইনপুট (Interactive Action):</label>
-      <div class="flex gap-2">
-        <input id="testInput" type="text" placeholder="একটি নতুন টাস্ক বা প্রম্পট লিখুন..." class="flex-1 px-3.5 py-2 rounded-xl bg-slate-950 border border-pink-500/30 text-xs text-white focus:outline-none focus:border-pink-500">
-        <button onclick="addItem()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-xs font-bold text-white glow-btn hover:opacity-90 active:scale-95 transition-all">
-          যুক্ত করুন
-        </button>
-      </div>
-      <div id="itemList" class="space-y-2 mt-3 max-h-48 overflow-y-auto">
-        <div class="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-between text-xs">
-          <span>✨ গুগল স্টুডিও এআই মডেল কানেকশন ভেরিফাইড</span>
-          <span class="text-emerald-400 font-bold">100% Ready</span>
-        </div>
-        <div class="p-2.5 rounded-xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-between text-xs">
-          <span>⚡ রিয়েল-টাইম রেসপন্সিভ স্টেট ম্যানেজমেন্ট</span>
-          <span class="text-cyan-400 font-bold">Active</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="pt-3 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-      <span>AI Engine: Gemini 3.8 Flash & DeepSeek Architect</span>
-      <button onclick="triggerSuccess()" class="text-pink-400 font-bold hover:underline">
-        🎉 টেস্ট রান করুন
-      </button>
-    </div>
-  </div>
-
+<body>
+  <main>
+    <h1>SARA Browser Prototype Sample</h1>
+    <p class="notice">এটি একটি built-in fallback demo — তোমার অনুরোধের app তৈরি হয়েছে বলে ধরে নিও না।</p>
+    <p>এই নমুনায় শুধু স্থানীয়ভাবে একটি list item যোগ করা যায়। এটি কোনো server, API বা external service-এর সঙ্গে যুক্ত নয়।</p>
+    <form id="demoForm">
+      <input id="demoInput" aria-label="Demo list item" maxlength="200" placeholder="একটি demo item লিখুন">
+      <button type="submit">Demo item যোগ করুন</button>
+    </form>
+    <ul id="demoList"><li>Local-only demo item</li></ul>
+    <small>Provider: built-in fallback template · Build/test/deploy: not performed</small>
+  </main>
   <script>
-    function addItem() {
-      const input = document.getElementById('testInput');
-      const val = input.value.trim();
-      if (!val) return;
-      const list = document.getElementById('itemList');
-      const div = document.createElement('div');
-      div.className = 'p-2.5 rounded-xl bg-pink-950/40 border border-pink-500/40 flex items-center justify-between text-xs animate-pulse';
-      div.innerHTML = '<span>' + val + '</span><span class="text-pink-300 font-bold">✓ কমপ্লিট</span>';
-      list.prepend(div);
+    document.getElementById('demoForm').addEventListener('submit', function (event) {
+      event.preventDefault();
+      const input = document.getElementById('demoInput');
+      const value = input.value.trim();
+      if (!value) return;
+      const item = document.createElement('li');
+      item.textContent = value;
+      document.getElementById('demoList').appendChild(item);
       input.value = '';
-    }
-    function triggerSuccess() {
-      alert('সারা এআই: অভিনন্দন! স্বয়ংক্রিয়ভাবে তৈরি করা অ্যাপটি ত্রুটিহীনভাবে কাজ করছে ❤️');
-    }
+    });
   </script>
 </body>
 </html>`;
 
   return {
     taskTitle: title,
-    bengaliTitle: bengaliTitle,
+    bengaliTitle,
     summary: desc,
-    spokenBengali: spoken,
-    techStack: ['Gemini 3.8 Flash', 'Google AI Studio Architecture', 'React 18', 'Tailwind CSS', 'TypeScript'],
-    modelsInvolved: [
-      'Gemini 3.8 Flash (Multi-modal Reasoning & Logic)',
-      'Claude UI Synthesizer (Tailwind Glassmorphic Design)',
-      'DeepSeek Coder (State Machine & Clean Code Synthesis)'
-    ],
+    spokenBengali: 'বাবু, Gemini preview পাওয়া যায়নি, তাই শুধু একটি built-in sample দেখাচ্ছি। এটি তোমার চাওয়া app-এর পূর্ণ implementation নয়; build, test বা deploy করা হয়নি।',
+    techStack: ['HTML5', 'CSS', 'Browser JavaScript'],
+    modelsInvolved: ['Built-in fallback template'],
     executionSteps: [
-      { title: 'User Prompt & Intent Discovery', detail: `বিশ্লেষণ সম্পন্ন: "${task}" -> সম্পূর্ণ স্বয়ংক্রিয় অ্যাপ ইঞ্জিন তৈরি`, status: 'done', model: 'Gemini 3.8 Flash' },
-      { title: 'Multi-Model Intelligence Gathering', detail: 'ডিজাইন প্যাটার্ন, স্টেট ম্যানেজমেন্ট ও ইউআই কম্পোনেন্ট সমন্বয় করা হয়েছে', status: 'done', model: 'Multi-AI Ensemble' },
-      { title: 'Full-Stack Code Implementation', detail: 'কম্পলিট সোর্স কোড (App.tsx, index.html) উৎপাদন সম্পন্ন', status: 'done', model: 'Code Synthesizer' },
-      { title: 'Live Sandbox & Interactive Preview', detail: 'ইন-অ্যাপ স্যান্ডবক্স আইফ্রেম এবং লাইভ রানার প্রস্তুত করা হয়েছে', status: 'done', model: 'Google AI Studio Sandbox' }
+      { title: 'Request received', detail: 'Gemini preview তৈরি করা যায়নি।', status: 'done' },
+      { title: 'Fallback selected', detail: 'একটি local-only demo template দেখানো হচ্ছে।', status: 'done' },
+      { title: 'Build and test', detail: 'কোনো build বা automated test চালানো হয়নি।', status: 'not_run' },
+      { title: 'Deployment', detail: 'কোনো deployment করা হয়নি।', status: 'not_run' },
     ],
     files: [
-      {
-        fileName: 'App.tsx',
-        language: 'typescript',
-        content: `import React, { useState } from 'react';\n\n// Autonomous App generated by SARA AI\n// Prompt: "${task}"\n\nexport default function App() {\n  const [tasks, setTasks] = useState<string[]>([\n    'Google Studio AI Integration',\n    'Multi-model Component Assembly'\n  ]);\n  const [inputVal, setInputVal] = useState('');\n\n  const handleAdd = () => {\n    if (!inputVal.trim()) return;\n    setTasks([inputVal.trim(), ...tasks]);\n    setInputVal('');\n  };\n\n  return (\n    <div className="min-h-screen bg-slate-950 text-white p-6 flex flex-col items-center">\n      <h1 className="text-2xl font-bold text-pink-400 mb-2">${title}</h1>\n      <p className="text-xs text-slate-400 mb-6">${bengaliTitle}</p>\n      <div className="w-full max-w-md bg-slate-900 border border-pink-500/30 rounded-2xl p-4 shadow-xl">\n        <div className="flex gap-2 mb-4">\n          <input\n            value={inputVal}\n            onChange={(e) => setInputVal(e.target.value)}\n            placeholder="Enter action or data..."\n            className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm"\n          />\n          <button onClick={handleAdd} className="bg-pink-600 px-4 py-2 rounded-xl text-sm font-bold">Add</button>\n        </div>\n        <ul className="space-y-2">\n          {tasks.map((t, i) => (\n            <li key={i} className="p-2.5 rounded-xl bg-slate-800/80 flex justify-between text-sm">\n              <span>{t}</span>\n              <span className="text-emerald-400 font-bold">✓ Done</span>\n            </li>\n          ))}\n        </ul>\n      </div>\n    </div>\n  );\n}`
-      },
-      {
-        fileName: 'index.html',
-        language: 'html',
-        content: liveHtml
-      }
+      { fileName: 'index.html', language: 'html', content: liveHtml },
     ],
-    livePreviewHtml: liveHtml
+    livePreviewHtml: liveHtml,
   };
 }
 
@@ -404,48 +330,41 @@ function generateAutonomousFallback(task: string) {
 // -------------------------------------------------------------
 app.post('/api/agent-solve', async (req, res) => {
   try {
-    const { task, taskType = 'general', userName = 'Zobaer' } = req.body;
-    if (!task || typeof task !== 'string') {
-      return res.status(400).json({ success: false, error: 'Task is required' });
+    const requestBody = req.body && typeof req.body === 'object' && !Array.isArray(req.body)
+      ? req.body as Record<string, unknown>
+      : {};
+    const task = typeof requestBody.task === 'string' ? requestBody.task.trim() : '';
+    if (!task) {
+      return res.status(400).json({ success: false, error: 'Task is required.' });
+    }
+    if (task.length > 8000) {
+      return res.status(400).json({ success: false, error: 'Task must be 8000 characters or fewer.' });
     }
 
     const ai = getAIClient(req);
+    const systemPrompt = `You are Sara's browser-prototype generator. One Gemini API request is made for this task; no other AI models, compiler, test runner, or deployment system is orchestrated by this endpoint.
 
-    const systemPrompt = `You are SARA AI — an Autonomous Multi-Model Software Architect, Full-Stack Engineer, and General-Purpose Autonomous Agent.
-The user is giving you a task (which may be in Bengali, English, or mixed Banglish).
-User Request: "\${task}"
-
-Your goal is to autonomously execute and fulfill this request completely.
-If the user asks to build an app (e.g. "গুগল স্টুডিও অন করে একটা অ্যাপ বানাও", "Create a task manager", "Build an e-commerce website", "Create a weather dashboard", etc.):
-1. Deconstruct the app into architecture, data model, state machine, and modern UI.
-2. Generate COMPLETE, working, beautiful production-ready code with NO placeholders or truncated logic.
-3. Provide a complete self-contained "livePreviewHtml" (with HTML5, Tailwind CSS via CDN <script src="https://cdn.tailwindcss.com"></script>, FontAwesome or SVG icons, and interactive JavaScript) that can directly run inside a sandboxed iframe.
-4. Output valid JSON in the exact schema below.
-
-JSON Schema:
+Return ONLY valid JSON with this schema:
 {
-  "taskTitle": "English Title",
+  "taskTitle": "Short title",
   "bengaliTitle": "বাংলা শিরোনাম",
-  "summary": "Detailed Bengali explanation of what was built and how it functions",
-  "spokenBengali": "Sweet, enthusiastic Bengali voice response as Sara (2-3 sentences)",
-  "techStack": ["Gemini 3.8 Flash", "Google AI Studio", "Tailwind CSS", "React/JS"],
-  "modelsInvolved": ["Gemini 3.8 Flash (Core Reasoning)", "Claude/GPT Design Model (UI/UX)", "DeepSeek Code Model (Logic Synthesizer)"],
-  "executionSteps": [
-    { "title": "Requirements & Specification", "detail": "Analyzed user prompt and formed blueprint", "status": "done", "model": "Gemini 3.8 Flash" },
-    { "title": "Multi-Model Architecture Synthesis", "detail": "Synthesized state structures, component hierarchy and UI theme", "status": "done", "model": "Design & Logic Models" },
-    { "title": "Code Generation", "detail": "Generated complete working source code files without ellipsis", "status": "done", "model": "DeepSeek Code Synthesizer" },
-    { "title": "Sandbox Verification", "detail": "Tested and validated live interactive preview bundle", "status": "done", "model": "Google AI Studio Sandbox" }
-  ],
-  "files": [
-    { "fileName": "App.tsx", "language": "typescript", "content": "...full code..." },
-    { "fileName": "index.html", "language": "html", "content": "...full html..." }
-  ],
-  "livePreviewHtml": "<!DOCTYPE html><html><head><script src='https://cdn.tailwindcss.com'></script></head><body class='bg-slate-900 text-white p-4'>...interactive app with buttons, forms, javascript logic...</body></html>"
+  "summary": "Describe what the supplied browser prototype visibly implements. Be transparent about limitations.",
+  "techStack": ["HTML5", "CSS", "Browser JavaScript"],
+  "livePreviewHtml": "<!doctype html>...complete self-contained browser HTML..."
 }
 
-Respond ONLY with valid JSON. No markdown backticks around the JSON.`;
+Requirements:
+- Generate a self-contained HTML/CSS/JavaScript browser prototype for the user's request.
+- Use safe DOM APIs such as textContent for user-entered text; do not use eval or dynamic code execution.
+- Do not claim that code was compiled, tested, verified, production-ready, deployed, or connected to backend services.
+- Do not claim to have used multiple models, Google AI Studio, Claude, or DeepSeek. This endpoint calls only the configured Gemini API once.
+- Do not include invented ratings, fabricated API results, fake connected-service states, or fake success labels.
+- Do not include authentication secrets, API keys, or external credentials.
+- If the requested feature cannot be represented in a self-contained prototype, describe the limitation plainly.
+- The HTML must be at most 500,000 characters. Do not wrap the JSON in Markdown fences.`;
 
-    let generatedData: any = null;
+    let generatedData: Record<string, unknown> | null = null;
+    let provider: 'gemini' | 'fallback' = 'gemini';
 
     try {
       const response = await ai.models.generateContent({
@@ -458,23 +377,54 @@ Respond ONLY with valid JSON. No markdown backticks around the JSON.`;
       });
 
       const responseText = response.text || '';
-      const cleanJson = responseText.replace(/^```json\s*/, '').replace(/```\s*$/, '').trim();
-      generatedData = JSON.parse(cleanJson);
+      const cleanJson = responseText.trim();
+      const parsed: unknown = JSON.parse(cleanJson);
+      if (
+        parsed &&
+        typeof parsed === 'object' &&
+        !Array.isArray(parsed) &&
+        'livePreviewHtml' in parsed &&
+        typeof parsed.livePreviewHtml === 'string' &&
+        parsed.livePreviewHtml.trim().length > 0 &&
+        parsed.livePreviewHtml.length <= 500_000
+      ) {
+        generatedData = parsed as Record<string, unknown>;
+      }
     } catch (genErr: any) {
-      console.warn('Gemini 3.8 Flash agent error, utilizing autonomous fallback generator:', genErr?.message?.slice(0, 80));
+      console.warn('Agent preview generation failed; using built-in fallback template:', genErr?.message?.slice(0, 100));
     }
 
-    if (!generatedData || !generatedData.livePreviewHtml) {
+    if (!generatedData) {
       generatedData = generateAutonomousFallback(task);
+      provider = 'fallback';
+    } else {
+      const html = generatedData.livePreviewHtml as string;
+      const title = typeof generatedData.taskTitle === 'string' ? generatedData.taskTitle.slice(0, 160) : 'Browser prototype preview';
+      const bengaliTitle = typeof generatedData.bengaliTitle === 'string' ? generatedData.bengaliTitle.slice(0, 160) : 'ব্রাউজার প্রোটোটাইপ প্রিভিউ';
+      const rawSummary = typeof generatedData.summary === 'string' ? generatedData.summary.slice(0, 1800) : '';
+      generatedData = {
+        taskTitle: title,
+        bengaliTitle,
+        summary: rawSummary
+          ? `${rawSummary} Build, automated tests and deployment have not been performed.`
+          : 'Gemini API returned browser preview HTML only. Build, automated tests and deployment have not been performed.',
+        techStack: html.includes('cdn.tailwindcss.com')
+          ? ['HTML5', 'Tailwind CSS (CDN)', 'Browser JavaScript']
+          : ['HTML5', 'CSS', 'Browser JavaScript'],
+        modelsInvolved: ['Gemini API'],
+        files: [],
+        livePreviewHtml: html,
+      };
     }
 
-    res.json({
+    return res.json({
       success: true,
+      provider,
       data: generatedData,
     });
   } catch (error: any) {
     console.error('Agent solve error:', error);
-    res.status(500).json({ success: false, error: error?.message || 'Agent failed to solve task' });
+    return res.status(500).json({ success: false, error: error?.message || 'Agent failed to solve task' });
   }
 });
 
