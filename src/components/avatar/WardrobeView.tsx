@@ -3,8 +3,8 @@ import { useSara } from '../../context/SaraContext';
 import { RealHuman3DAvatar } from './RealHuman3DAvatar';
 import { Check, Sparkles, ShoppingBag, Shirt, Glasses, Lock, Flame } from 'lucide-react';
 
-export { WARDROBE_ITEMS } from '../../services/WardrobeInventory';
 import { WARDROBE_ITEMS, type WardrobeItem } from '../../services/WardrobeInventory';
+export { WARDROBE_ITEMS } from '../../services/WardrobeInventory';
 
 export const WardrobeView: React.FC = () => {
   const {
