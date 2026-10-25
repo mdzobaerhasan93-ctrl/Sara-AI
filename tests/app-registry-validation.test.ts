@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
+import type { AppDefinition } from '../src/services/AppInventoryService';
 import {
   createSafeAppId,
   mergeSavedApps,
   validateAppDefinition,
 } from '../src/services/AppRegistryValidation.ts';
 
-const validApp = {
+const validApp: AppDefinition = {
   id: 'custom_tool',
   name: 'Custom Tool',
   bengaliName: 'কাস্টম টুল',
@@ -64,7 +65,7 @@ for (const app of invalidApps) {
   assert.equal(validateAppDefinition(app), null, 'Invalid app definitions must be rejected');
 }
 
-const builtIn = {
+const builtIn: AppDefinition = {
   ...validApp,
   id: 'instagram',
   name: 'Instagram',
