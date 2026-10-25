@@ -10,6 +10,7 @@ import { dispatchGitHubWorkflow } from './src/services/GitHubActionsService.ts';
 import { InMemoryRateLimiter } from './src/services/ApiRateLimit.ts';
 import { validateHighThinkingRequest } from './src/services/HighThinkingRequestValidation.ts';
 import { fetchCurrentWeather, validateWeatherCoordinates } from './src/services/WeatherService.ts';
+import { validateMapsGroundingRequest } from './src/services/MapsGroundingValidation.ts';
 
 dotenv.config();
 
@@ -789,20 +790,29 @@ app.post('/api/tts', rateLimitMiddleware('tts', apiRateLimiters.tts), async (req
 // 4. MAPS GROUNDING (gemini-3.5-flash with googleMaps tool)
 // -------------------------------------------------------------
 app.post('/api/maps-grounding', rateLimitMiddleware('maps-grounding', apiRateLimiters.mapsGrounding), async (req, res) => {
+  const validation = validateMapsGroundingRequest(req.body);
+  if (!validation.success) {
+    return res.status(400).json({
+      success: false,
+      status: 'INVALID_REQUEST',
+      error: validation.error,
+    });
+  }
+
   try {
-    const { query, latitude, longitude } = req.body;
+    const { query, coordinates } = validation.data;
     const ai = getAIClient(req);
 
     const config: any = {
       tools: [{ googleMaps: {} }],
     };
 
-    if (latitude !== undefined && longitude !== undefined) {
+    if (coordinates) {
       config.toolConfig = {
         retrievalConfig: {
           latLng: {
-            latitude: Number(latitude),
-            longitude: Number(longitude),
+            latitude: coordinates.latitude,
+            longitude: coordinates.longitude,
           },
         },
       };
@@ -818,25 +828,26 @@ app.post('/api/maps-grounding', rateLimitMiddleware('maps-grounding', apiRateLim
     const mapsLinks: Array<{ title: string; uri: string }> = [];
 
     groundingChunks.forEach((chunk: any) => {
-      if (chunk.maps?.uri) {
+      if (typeof chunk?.maps?.uri === 'string') {
         mapsLinks.push({
-          title: chunk.maps.title || 'Google Maps Location',
+          title: typeof chunk.maps.title === 'string' ? chunk.maps.title.slice(0, 160) : 'Google Maps Location',
           uri: chunk.maps.uri,
         });
       }
     });
 
-    res.json({
+    return res.json({
       success: true,
-      text: response.text || '',
+      text: typeof response.text === 'string' ? response.text : '',
       mapsLinks,
       groundingChunks,
     });
   } catch (error: any) {
-    console.error('Maps Grounding error:', error);
-    res.status(500).json({
+    console.error('Maps Grounding request failed.');
+    return res.status(502).json({
       success: false,
-      error: error?.message || 'Maps Grounding query failed.',
+      status: 'MAPS_PROVIDER_ERROR',
+      error: 'Maps Grounding provider request failed. Please try again.',
     });
   }
 });
