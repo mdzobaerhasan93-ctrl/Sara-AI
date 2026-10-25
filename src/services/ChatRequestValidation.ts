@@ -181,7 +181,7 @@ export function validateChatRequest(input: unknown): ChatRequestValidationResult
         emojiFrequency,
       },
       userLanguage,
-      userName: boundedText(input.userName || 'User', 80).trim() || 'User',
+      userName: boundedText(input.userName || 'User', 80).replace(/\\s+/g, ' ').trim() || 'User',
       memories: validateMemories(input.memories),
       model,
     },
