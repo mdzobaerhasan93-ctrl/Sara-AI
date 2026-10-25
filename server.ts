@@ -611,6 +611,23 @@ Respond ONLY with valid JSON with these 6 fields. No markdown backticks.`;
       ];
       resultData = fallbackList[Math.floor(Math.random() * fallbackList.length)];
     }
+    if (!isAiGenerated) {
+      const greetingByTime: Record<typeof timeOfDay, string> = {
+        morning: `শুভ সকাল ${userName}! আজকের দিনটি সুন্দর হোক। ❤️`,
+        afternoon: `শুভ দুপুর ${userName}! কাজের ফাঁকে একটু বিশ্রাম নিতে ভুলো না। ❤️`,
+        evening: `শুভ সন্ধ্যা ${userName}! দিন শেষে নিজের যত্ন নিও। ❤️`,
+        night: `শুভ রাত্রি ${userName}! বিশ্রাম নাও, আর নিজের যত্ন রেখো। ❤️`,
+        daily: `প্রিয় ${userName}, তোমার দিনের জন্য রইল আন্তরিক শুভকামনা। ❤️`,
+      };
+      resultData.greeting = greetingByTime[timeOfDay];
+      if (!loveMode) {
+        resultData.quoteBn = 'ক্লান্ত লাগলে একটু বিশ্রাম নাও, কিন্তু নিজের ওপর বিশ্বাস হারিয়ো না। ছোট ছোট পদক্ষেপও তোমাকে এগিয়ে নিয়ে যায়।';
+        resultData.quoteEn = 'Rest when you are weary, but do not lose faith in yourself. Small steps still move you forward.';
+        resultData.emotion = 'caring';
+        resultData.tag = 'Care & Hope';
+        resultData.audioScript = resultData.quoteBn;
+      }
+    }
 
     return res.json({
       success: true,
