@@ -18,6 +18,7 @@ import { alarmAudio, checkScheduleMatch } from '../utils/alarmSound';
 import { AppInventoryService, AppDefinition, InAppAction } from '../services/AppInventoryService';
 import { AIAgentService } from '../services/AIAgentService';
 import { planAutomationExecution } from '../services/AutomationExecutionPlan';
+import { validateStoredAutomations } from '../services/AutomationStorageValidation';
 
 interface SaraContextType {
   // Assistant Status
@@ -343,25 +344,43 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // 9. Automations
   const [automations, setAutomations] = useState<AutomationItem[]>(() => {
-    const saved = localStorage.getItem('sara_automations');
+    let saved: string | null = null;
+    try {
+      saved = typeof localStorage !== 'undefined' ? localStorage.getItem('sara_automations') : null;
+    } catch {
+      saved = null;
+    }
+
     if (saved) {
       try {
-        const parsed: AutomationItem[] = JSON.parse(saved);
-        // Ensure default initial auto_1/auto_2 don't auto-ring on launch unless explicitly set
-        return parsed.map((a: AutomationItem) => {
-          let updated = { ...a };
-          if (!updated.category) {
-            if (updated.id === 'auto_1') updated.category = 'Routine';
-            else if (updated.id === 'auto_2') updated.category = 'Social';
-            else if (updated.id === 'auto_3') updated.category = 'Health';
-            else updated.category = 'Routine';
-          }
-          if ((updated.id === 'auto_1' || updated.id === 'auto_2') && !localStorage.getItem('sara_user_enabled_' + updated.id)) {
-            updated.enabled = false;
-          }
-          return updated;
-        });
-      } catch (e) {}
+        const parsed: unknown = JSON.parse(saved);
+        const validated = validateStoredAutomations(parsed);
+        if (validated !== null) {
+          // Default scheduled greetings stay disabled unless the user explicitly enabled them.
+          return validated.map((a) => {
+            const updated = { ...a };
+            if (!updated.category) {
+              if (updated.id === 'auto_1') updated.category = 'Routine';
+              else if (updated.id === 'auto_2') updated.category = 'Social';
+              else if (updated.id === 'auto_3') updated.category = 'Health';
+              else updated.category = 'Routine';
+            }
+
+            if (updated.id === 'auto_1' || updated.id === 'auto_2') {
+              let explicitlyEnabled = false;
+              try {
+                explicitlyEnabled = localStorage.getItem('sara_user_enabled_' + updated.id) === 'true';
+              } catch {
+                explicitlyEnabled = false;
+              }
+              if (!explicitlyEnabled) updated.enabled = false;
+            }
+            return updated;
+          });
+        }
+      } catch {
+        // Malformed saved JSON falls back to safe defaults below.
+      }
     }
     return [
       {
@@ -399,7 +418,13 @@ export const SaraProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   useEffect(() => {
-    localStorage.setItem('sara_automations', JSON.stringify(automations));
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('sara_automations', JSON.stringify(automations));
+      }
+    } catch {
+      // The app remains usable if browser storage is disabled or full.
+    }
   }, [automations]);
 
   const toggleAutomation = (id: string) => {
